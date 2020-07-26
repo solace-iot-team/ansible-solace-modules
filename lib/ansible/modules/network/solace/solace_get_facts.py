@@ -42,37 +42,11 @@ short_description: Retrieves facts from the Solace event broker using the '/abou
 
 description:
   - "Retrieves facts from the Solace event broker from the '/about' resource and sets 'ansible_facts.solace' for the rest of the playbook."
-  - "Ideally, call at the beginning of the playbook so all subsequent tasks can use '{{ ansible_facts.solace.<path-to-fact> }}'."
+  - "Call at the beginning of the playbook so all subsequent tasks can use '{{ ansible_facts.solace.<path-to-fact> }}'."
   - "Reference: https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/about."
 
-options:
-  host:
-    description: Hostname of Solace Broker.
-    required: false
-    default: "localhost"
-  port:
-    description: Management port of Solace Broker.
-    required: false
-    default: 8080
-  secure_connection:
-    description: If true, use https rather than http for querying.
-    required: false
-    default: false
-  username:
-    description: Administrator username for Solace Broker.
-    required: false
-    default: "admin"
-  password:
-    description: Administrator password for Solace Broker.
-    required: false
-    default: "admin"
-  timeout:
-    description: Connection timeout in seconds for the http request.
-    required: false
-    default: 1
-  x_broker:
-    description: Custom HTTP header with the broker virtual router id, if using a SEMPv2 Proxy/agent infrastructure.
-    required: false
+extends_documentation_fragment:
+- solace.broker
 
 author:
   - Ricardo Gomez-Ulmke (ricardo.gomez-ulmke@solace.com)
@@ -184,9 +158,7 @@ def addPathValue(dictionary, path_array, value):
 
 
 def run_module():
-    """Entrypoint to module"""
-
-    """Compose module arguments"""
+    """Entrypoint to module."""
     module_args = dict(
     )
     arg_spec = su.arg_spec_broker()
@@ -213,7 +185,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 

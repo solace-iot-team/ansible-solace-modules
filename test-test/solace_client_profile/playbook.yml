@@ -1,4 +1,3 @@
-#!/bin/bash
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -24,11 +23,18 @@
 # ---------------------------------------------------------------------------------------------
 
 -
-  name: "Test module: solace_get_client_usernames"
+  name: "solace_client_profile: Create / Update / Delete Client Profile"
   hosts: "{{ brokers }}"
   gather_facts: no
   module_defaults:
-    solace_client_username:
+    solace_get_facts:
+      host: "{{ sempv2_host }}"
+      port: "{{ sempv2_port }}"
+      secure_connection: "{{ sempv2_is_secure_connection }}"
+      username: "{{ sempv2_username }}"
+      password: "{{ sempv2_password }}"
+      timeout: "{{ sempv2_timeout }}"
+    solace_client_profile:
       host: "{{ sempv2_host }}"
       port: "{{ sempv2_port }}"
       secure_connection: "{{ sempv2_is_secure_connection }}"
@@ -36,80 +42,51 @@
       password: "{{ sempv2_password }}"
       timeout: "{{ sempv2_timeout }}"
       msg_vpn: "{{ vpn }}"
-    solace_get_client_usernames:
-      host: "{{ sempv2_host }}"
-      port: "{{ sempv2_port }}"
-      secure_connection: "{{ sempv2_is_secure_connection }}"
-      username: "{{ sempv2_username }}"
-      password: "{{ sempv2_password }}"
-      timeout: "{{ sempv2_timeout }}"
-      msg_vpn: "{{ vpn }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
+
 
   tasks:
 
-    - name: Get pre-existing client usernames
-      solace_get_client_usernames:
-        query_params:
-          where:
-            - "clientUsername==ansible-solace__test*"
-          select:
-            - "clientUsername"
-      register: pre_existing_list
-
-    - name: Print pre-existing list
+    - name: Print Host Meta
       debug:
-        msg: "{{ pre_existing_list.result_list }}"
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "account: {{ meta.account | default('unknown') }}"
+          - "service: {{ meta.service | default('unknown') }}"
 
-    - name: Print count of pre-existing list
-      debug:
-        msg: "{{ pre_existing_list.result_list_count }}"
+    - name: Get Solace Facts
+      solace_get_facts:
 
-    - name: Remove all found client usernames
-      solace_client_username:
-        name: "{{ item.clientUsername }}"
+    - name: Delete Client Profile
+      solace_client_profile:
+        name: "test_ansible_solace"
         state: absent
-      register: result
-      loop: "{{ pre_existing_list.result_list }}"
 
-    - include_vars:
-        file: "./lib/vars.json"
-        name: target_list
-
-    - name: Adding / updating client usernames
-      solace_client_username:
-        name: "{{ item.name }}"
+    - name: Create Client Profile
+      solace_client_profile:
+        name: "test_ansible_solace"
         state: present
-      loop: "{{ target_list.clientUsernames }}"
 
-    - name: Get new client usernames
-      solace_get_client_usernames:
-        query_params:
-          where:
-            - "clientUsername==ansible-solace__test*"
-          select:
-            - "clientUsername"
-      register: new_list_result
+    - name: Update Client Profile
+      solace_client_profile:
+        name: "test_ansible_solace"
+        settings:
+          allowGuaranteedMsgSendEnabled: true
+          allowGuaranteedMsgReceiveEnabled: true
+          allowGuaranteedEndpointCreateEnabled: true
+          #compressionEnabled: false
+          #tlsAllowDowngradeToPlainTextEnabled: false
+        state: present
 
-    - name: Print new client username list
-      debug:
-        msg: "{{ new_list_result.result_list }}"
+    # - debug:
+    #     msg: "Not removing objects - Ending play"
+    # - meta: end_play
 
-    - name: Print count of new client username list
-      debug:
-        msg: "{{ new_list_result.result_list_count }}"
-
-    - name: Fail when new client username list count != 4
-      fail:
-        msg: "new client username list count != 4"
-      when: new_list_result.result_list_count != 4
-
-    - name: Remove all client usernames again
-      solace_client_username:
-        name: "{{ item.name }}"
+    - name: Delete Client Profile
+      solace_client_profile:
+        name: "test_ansible_solace"
         state: absent
-      register: result
-      loop: "{{ target_list.clientUsernames }}"
-
 
 ###
 # The End.

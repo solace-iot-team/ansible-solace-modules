@@ -35,17 +35,17 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = '''
 ---
-module: solace_get_client_usernames
+module: solace_get_client_profiles
 
-version_added: '2.9.10'
+version_added: '2.9.11'
 
-short_description: Get a list of Client Username objects.
+short_description: Get a list of Client Profile objects.
 
 description:
-- "Get a list of Client Username objects. Retrieves all client username objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
+- "Get a list of Client Profile objects. Retrieves all client profile objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
 
 notes:
-- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientUsername/getMsgVpnClientUsernames)."
+- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientProfile/getMsgVpnClientProfiles)."
 
 extends_documentation_fragment:
 - solace.broker
@@ -53,7 +53,7 @@ extends_documentation_fragment:
 - solace.query
 
 seealso:
-- module: solace_client_username
+- module: solace_client_profile
 
 author:
   - Ricardo Gomez-Ulmke (ricardo.gomez-ulmke@solace.com)
@@ -61,30 +61,56 @@ author:
 '''
 
 EXAMPLES = '''
+-
+  name: "Test module: solace_get_client_profiles"
+  hosts: "{{ brokers }}"
+  gather_facts: no
+  module_defaults:
+    solace_client_profile:
+      host: "{{ sempv2_host }}"
+      port: "{{ sempv2_port }}"
+      secure_connection: "{{ sempv2_is_secure_connection }}"
+      username: "{{ sempv2_username }}"
+      password: "{{ sempv2_password }}"
+      timeout: "{{ sempv2_timeout }}"
+      msg_vpn: "{{ vpn }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
+    solace_get_client_profiles:
+      host: "{{ sempv2_host }}"
+      port: "{{ sempv2_port }}"
+      secure_connection: "{{ sempv2_is_secure_connection }}"
+      username: "{{ sempv2_username }}"
+      password: "{{ sempv2_password }}"
+      timeout: "{{ sempv2_timeout }}"
+      msg_vpn: "{{ vpn }}"
 
-- name: Get pre-existing client usernames
-  solace_get_client_usernames:
-    query_params:
-      where:
-        - "clientUsername==ansible-solace__test*"
-      select:
-        - "clientUsername"
-  register: pre_existing_list
+  tasks:
 
-- name: Print pre-existing list
-  debug:
-    msg: "{{ pre_existing_list.result_list }}"
+    - name: Get pre-existing client profiles
+      solace_get_client_profiles:
+        query_params:
+          where:
+            - "clientProfileName==ansible-solace__test*"
+          select:
+            - "clientProfileName"
+      register: pre_existing_list
 
-- name: Print count of pre-existing list
-  debug:
-    msg: "{{ pre_existing_list.result_list_count }}"
+    - name: Print pre-existing list
+      debug:
+        msg: "{{ pre_existing_list.result_list }}"
 
-- name: Remove all found client usernames
-  solace_client_username:
-    name: "{{ item.clientUsername }}"
-    state: absent
-  register: result
-  loop: "{{ pre_existing_list.result_list }}"
+    - name: Print count of pre-existing list
+      debug:
+        msg: "{{ pre_existing_list.result_list_count }}"
+
+    - name: Remove all found client profiles
+      solace_client_profile:
+        name: "{{ item.clientProfileName }}"
+        state: absent
+      register: result
+      loop: "{{ pre_existing_list.result_list }}"
+
 
 '''
 
@@ -96,10 +122,10 @@ result_list:
     elements: complex
     sample: [
         {
-            "clientUsername": "ansible-solace__test__1__"
+            "clientProfileName": "ansible-solace__test__1__"
         },
         {
-            "clientUsername": "ansible-solace__test__2__"
+            "clientProfileName": "ansible-solace__test__4__"
         }
     ]
 
@@ -111,15 +137,15 @@ result_list_count:
 '''
 
 
-class SolaceGetClientUsernamesTask(su.SolaceTask):
+class SolaceGetClientProfilesTask(su.SolaceTask):
 
     def __init__(self, module):
         su.SolaceTask.__init__(self, module)
 
     def get_list(self):
-        # GET /msgVpns/{msgVpnName}/clientUsernames
+        # GET /msgVpns/{msgVpnName}/clientProfiles
         vpn = self.module.params['msg_vpn']
-        path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.CLIENT_USERNAMES]
+        path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.CLIENT_PROFILES]
 
         query_params = self.module.params['query_params']
         ok, resp = su.get_list(self.solace_config, path_array, query_params)
@@ -132,9 +158,7 @@ class SolaceGetClientUsernamesTask(su.SolaceTask):
 
 
 def run_module():
-    """Entrypoint to module"""
 
-    """Compose module arguments"""
     module_args = dict(
     )
     arg_spec = su.arg_spec_broker()
@@ -152,7 +176,7 @@ def run_module():
         changed=False
     )
 
-    solace_task = SolaceGetClientUsernamesTask(module)
+    solace_task = SolaceGetClientProfilesTask(module)
     ok, resp_or_list = solace_task.get_list()
     if not ok:
         module.fail_json(msg=resp_or_list, **result)
@@ -163,7 +187,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 

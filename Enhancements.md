@@ -24,13 +24,10 @@ Examples: `solace_get_queues`, `solace_get_client_usernames`
   * [solace_rdp_rest_consumer_trusted_cn](https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/restDeliveryPoint/getMsgVpnRestDeliveryPointRestConsumerTlsTrustedCommonNames)
     - deprecated since 2.17 - replaced by "Common Name validation has been replaced by Server Certificate Name validation".
 
-## Framework
+## Solace Cloud Modules
 
-- Add Solace Cloud API
-
-## Refactor as Ansible Collection
-
-[See here](https://docs.ansible.com/ansible/latest/dev_guide/developing_collections.html).
-
+- solace_cloud_service
+- solace_cloud_user
+- solace_cloud_event_portal
 ---
 The End.

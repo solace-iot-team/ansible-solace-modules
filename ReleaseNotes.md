@@ -1,5 +1,27 @@
 # Release Notes
 
+## Version: 0.5.0
+### Modules
+    new:
+      - solace_get_client_profiles
+    updated:
+      - solace_client_profile: added Solace Cloud API
+          1) Create API Token Manually in Solace Cloud Console
+          2) Set in inventory:
+              - api_token
+              - service_id
+### Framework
+    - added Solace Cloud API functionality
+### Tests
+    new:
+      - solace_client_profile
+      - solace_get_client_profiles
+### Test Framework
+    - none
+### Other
+    - none
+
+---------------------
 ## Version: 0.4.1
 ### New Modules
     - none
@@ -13,7 +35,7 @@
     -none
 ### Other Updates
     - minor changes to Readmes
-
+---------------------
 
 ## Version: 0.4.0
 ### New Modules
@@ -28,9 +50,7 @@
 ### Tests
     - solace_mqtt_session:
       - covers new modules
-
-
-
+---------------------
 ## Version: 0.3.0
 ### New Modules
     - solace_get_queues

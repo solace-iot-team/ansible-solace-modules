@@ -29,7 +29,7 @@ class ModuleDocFragment(object):
     # Documentation fragments for Solace modules
     BROKER = r'''
 ---
-description:
+notes:
 - "Sempv2 Config Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/)."
 
 options:
@@ -75,6 +75,26 @@ options:
     description: The message vpn.
     required: true
     type: str
+'''
+
+    SOLACE_CLOUD_CONFIG = r'''
+options:
+  solace_cloud_api_token:
+    description: The API Token.
+    notes:
+    - Generate using Solace Cloud console with the appropriate permissions for the operations you want to enable.
+    - Either both (solace_cloud_api_token AND solace_cloud_service_id) are provided or none.
+    type: str
+    required: false
+    default: None
+  solace_cloud_service_id:
+    description: The service id in Solace Cloud.
+    notes:
+    - Click on the service in Solace Cloud - the service id is in the URL.
+    - Either both (solace_cloud_api_token AND solace_cloud_service_id) are provided or none.
+    type: str
+    required: false
+    default: None
 '''
 
     VIRTUAL_ROUTER = r'''

@@ -23,36 +23,30 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-################################################################################
-# usage: source set-ansible-env.sh
-#
+if [[ $# != 1 ]]; then echo "Usage: '_run.call.sh full_path/brokers.inventory.json'"; exit 1; fi
+BROKERS_INVENTORY=$1
 
-# tests
-# export ANSIBLE_SOLACE_ENABLE_LOGGING="what is going on?"
-# export ANSIBLE_SOLACE_ENABLE_LOGGING=""
-# export ANSIBLE_SOLACE_ENABLE_LOGGING=
-# export ANSIBLE_SOLACE_ENABLE_LOGGING="true"
-# export ANSIBLE_SOLACE_ENABLE_LOGGING="false"
-
-export ANSIBLE_SOLACE_ENABLE_LOGGING=true
-
-export ANSIBLE_PYTHON_INTERPRETER=/usr/local/bin/python
-
-# pip3 show ansible-solace
-ANSIBLE_SOLACE_HOME=/Users/rjgu/Dropbox/Solace-Contents/Solace-IoT-Team/ansible-solace/lib
-
-export ANSIBLE_MODULE_UTILS="$ANSIBLE_SOLACE_HOME/ansible/module_utils"
-export ANSIBLE_LIBRARY="$ANSIBLE_SOLACE_HOME/ansible/modules"
+SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+# test jq is installed
+res=$(jq --version)
+if [[ $? != 0 ]]; then echo "ERR >>> jq not found. aborting."; echo; exit 1; fi
 
 
-echo
-echo "Ansible env vars:"; echo
-echo " - ANSIBLE_PYTHON_INTERPRETER=$ANSIBLE_PYTHON_INTERPRETER"
-echo " - ANSIBLE_SOLACE_HOME=$ANSIBLE_SOLACE_HOME"
-echo " - ANSIBLE_MODULE_UTILS=$ANSIBLE_MODULE_UTILS"
-echo " - ANSIBLE_LIBRARY=$ANSIBLE_LIBRARY"
-echo " - ANSIBLE_SOLACE_ENABLE_LOGGING=$ANSIBLE_SOLACE_ENABLE_LOGGING"
-echo
+##############################################################################################################################
+# Prepare
+
+ANSIBLE_SOLACE_LOG_FILE="$SCRIPT_PATH/ansible-solace.log"
+rm -f $ANSIBLE_SOLACE_LOG_FILE
+
+##############################################################################################################################
+# Run
+
+PLAYBOOK="$SCRIPT_PATH/playbook.yml"
+BROKERS="all"
+
+ansible-playbook -i $BROKERS_INVENTORY \
+                  $PLAYBOOK \
+                  --extra-vars "brokers=$BROKERS" \
 
 ###
 # The End.

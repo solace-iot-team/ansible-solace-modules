@@ -1,1 +1,3 @@
-cloud.brokers.inventory.json
+
+set-ansible-env.dev.sh
+cloud.brokers.inventory.*

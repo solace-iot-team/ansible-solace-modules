@@ -23,41 +23,26 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
+################################################################################
+# usage: source set-ansible-env.sh
+#
 
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+export ANSIBLE_SOLACE_ENABLE_LOGGING=true
+export ANSIBLE_PYTHON_INTERPRETER=/usr/local/bin/python
+# pip3 show ansible-solace
+ANSIBLE_SOLACE_HOME="{full-path}/ansible-solace/lib"
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
-
-brokerDockerImage=$(chooseBrokerDockerImage "$SCRIPT_PATH/lib/brokerDockerImages.json")
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
-
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
-
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+export ANSIBLE_MODULE_UTILS="$ANSIBLE_SOLACE_HOME/ansible/module_utils"
+export ANSIBLE_LIBRARY="$ANSIBLE_SOLACE_HOME/ansible/modules"
 
 echo
-
-docker ps -a
-
-echo; echo "Done."; echo
+echo "Ansible env vars:"; echo
+echo " - ANSIBLE_PYTHON_INTERPRETER=$ANSIBLE_PYTHON_INTERPRETER"
+echo " - ANSIBLE_SOLACE_HOME=$ANSIBLE_SOLACE_HOME"
+echo " - ANSIBLE_MODULE_UTILS=$ANSIBLE_MODULE_UTILS"
+echo " - ANSIBLE_LIBRARY=$ANSIBLE_LIBRARY"
+echo " - ANSIBLE_SOLACE_ENABLE_LOGGING=$ANSIBLE_SOLACE_ENABLE_LOGGING"
+echo
 
 ###
 # The End.

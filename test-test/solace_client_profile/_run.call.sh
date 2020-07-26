@@ -23,41 +23,36 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
+if [[ $# != 1 ]]; then echo "Usage: '_run.call.sh full_path/brokers.inventory.json'"; exit 1; fi
+BROKERS_INVENTORY=$1
 
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+# test jq is installed
+res=$(jq --version)
+if [[ $? != 0 ]]; then echo "ERR >>> jq not found. aborting."; echo; exit 1; fi
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
 
-brokerDockerImage=$(chooseBrokerDockerImage "$SCRIPT_PATH/lib/brokerDockerImages.json")
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+##############################################################################################################################
+# Prepare
 
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
+ANSIBLE_SOLACE_LOG_FILE="$SCRIPT_PATH/ansible-solace.log"
+rm -f $ANSIBLE_SOLACE_LOG_FILE
 
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
+##############################################################################################################################
+# Run
 
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+playbooks=(
+  "$SCRIPT_PATH/exceptions.playbook.yml"
+  "$SCRIPT_PATH/playbook.yml"
+)
 
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+BROKERS="all"
 
-echo
+for playbook in ${playbooks[@]}; do
 
-docker ps -a
-
-echo; echo "Done."; echo
-
+  ansible-playbook -i $BROKERS_INVENTORY \
+                    $playbook \
+                    --extra-vars "brokers=$BROKERS"
+done
 ###
 # The End.
