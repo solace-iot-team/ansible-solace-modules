@@ -132,8 +132,7 @@ class SolaceACLProfileTask(su.SolaceTask):
 
 
 def run_module():
-    """Entrypoint to module"""
-
+    """Entrypoint to module."""
     """Compose module arguments"""
     module_args = dict(
     )

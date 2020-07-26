@@ -42,8 +42,9 @@ version_added: '2.9.10'
 short_description: Get a list of Client Username objects.
 
 description:
-- "Get a list of Client Username objects."
-- "Retrieves all client username objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
+- "Get a list of Client Username objects. Retrieves all client username objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
+
+notes:
 - "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientUsername/getMsgVpnClientUsernames)."
 
 extends_documentation_fragment:
