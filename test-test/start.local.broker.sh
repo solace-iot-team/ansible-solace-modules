@@ -26,10 +26,10 @@
 clear
 
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+source $SCRIPT_PATH/lib/functions.sh
 
 brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
 dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
-
 
 brokerDockerImage=$(chooseBrokerDockerImage "$SCRIPT_PATH/lib/brokerDockerImages.json")
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
