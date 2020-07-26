@@ -45,7 +45,7 @@ if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 # SELECT
   # select inventory
   BROKERS_INVENTORY="$SCRIPT_PATH/../lib/local.broker.inventory.json"
-  # BROKERS_INVENTORY="$SCRIPT_PATH/../lib/cloud.broker.inventory.json"
+  # BROKERS_INVENTORY="$SCRIPT_PATH/../lib/cloud.brokers.inventory.json"
   # select broker(s) inside inventory
   BROKERS="all"
 # END SELECT
