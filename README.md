@@ -164,7 +164,8 @@ Status of the `solace_*` modules:
 | [solace_get_client_usernames](lib/ansible/modules/network/solace/solace_get_client_usernames.py) | clientUsername | Query | :sunny: | [:page_facing_up:](test-test/solace_get_client_usernames/solace_get_client_usernames.playbook.yml) |
 | [solace_client_username](lib/ansible/modules/network/solace/solace_client_username.py) | clientUsername | Action | :sunny: | [:page_facing_up:](examples/solace_client_username.yml) |
 |   |   |   |   |   |
-| [solace_client_profile](lib/ansible/modules/network/solace/solace_client_profile.py) | clientProfile | Action | :sunny: | |
+| [solace_get_client_profiles](lib/ansible/modules/network/solace/solace_get_client_profiles.py) | clientProfile | Query | :sunny: | [:page_facing_up:](test-test/solace_get_client_profiles/playbook.yml) |
+| [solace_client_profile](lib/ansible/modules/network/solace/solace_client_profile.py) | clientProfile | Action | :sunny: | [:page_facing_up:](test-test/solace_client_profile/playbook.yml) |
 |   |   |   |   |   |
 | [solace_dmr_bridge](lib/ansible/modules/network/solace/solace_dmr_bridge.py) | dmrBridge | Action | :sunny: | [:page_facing_up:](examples/solace_dmr.yml) |
 |   |   |   |   |   |

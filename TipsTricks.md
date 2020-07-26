@@ -78,5 +78,40 @@ The include file:
 }
 
 ````
+
+## Specifying Solace Cloud Parameters in Playbooks
+
+Example inventory template including Solace Cloud API token and service id:
+
+````json
+{
+  "all": {
+    "hosts": {
+      "solace-cloud-1": {
+        "meta": {
+          "account": "{account-name}",
+          "service": "{service-name}"
+        },
+        "ansible_connection": "local",
+        "solace_cloud_api_token": "{api-token}",
+        "solace_cloud_service_id": "{service-id}",
+        "sempv2_host": "{host}.messaging.solace.cloud",
+        "sempv2_port": 943,
+        "sempv2_is_secure_connection": true,
+        "sempv2_username": "{username}",
+        "sempv2_password": "{password}",
+        "sempv2_timeout": "60",
+        "vpn": "{vpn}",
+        "virtual_router": "primary"
+      }
+    }
+  }
+}
+
+````
+
+Example playbook: 
+See [Client Profile examples/tests](test-test/solace_get_client_profiles/playbook.yml).
+
 ---
 The End.
