@@ -32,6 +32,7 @@ import re
 import traceback
 import logging
 import json
+import time
 import os
 from distutils.util import strtobool
 from ansible.errors import AnsibleError
@@ -43,6 +44,12 @@ except ImportError:
     REQUESTS_IMP_ERR = traceback.format_exc()
     HAS_REQUESTS = False
 
+""" Solace Cloud reources """
+SOLACE_CLOUD_API_SERVICES_BASE_PATH = 'https://api.solace.cloud/api/v0/services'
+SOLACE_CLOUD_REQUESTS = 'requests'
+SOLACE_CLOUD_CLIENT_PROFILE_REQUESTS = 'clientProfileRequests'
+
+""" Standard reources """
 SEMP_V2_CONFIG = '/SEMP/v2/config'
 
 """ VPN level reources """
@@ -97,7 +104,6 @@ if ENABLE_LOGGING:
 
 
 class SolaceConfig(object):
-    """Solace Configuration object"""
 
     def __init__(self,
                  vmr_host,
@@ -106,12 +112,14 @@ class SolaceConfig(object):
                  vmr_secure=False,
                  vmr_timeout=1,
                  x_broker='',
-                 vmr_sempVersion=''):
+                 vmr_sempVersion='',
+                 solace_cloud_config=None):
         self.vmr_auth = vmr_auth
         self.vmr_timeout = float(vmr_timeout)
         self.vmr_url = ('https' if vmr_secure else 'http') + '://' + vmr_host + ':' + str(vmr_port)
         self.x_broker = x_broker
         self.vmr_sempVersion = vmr_sempVersion
+        self.solace_cloud_config = solace_cloud_config
         return
 
 
@@ -119,6 +127,25 @@ class SolaceTask:
 
     def __init__(self, module):
         self.module = module
+
+        solace_cloud_api_token = self.module.params.get('solace_cloud_api_token', None)
+        solace_cloud_service_id = self.module.params.get('solace_cloud_service_id', None)
+        # either both are provided or none
+        ok = ((solace_cloud_api_token and solace_cloud_service_id)
+              or (not solace_cloud_api_token and not solace_cloud_service_id))
+        if not ok:
+            result = dict(changed=False, response=dict())
+            msg = "you must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
+            self.module.fail_json(msg=msg, **result)
+
+        if ok and solace_cloud_api_token and solace_cloud_service_id:
+            solace_cloud_config = dict(
+                api_token=solace_cloud_api_token,
+                service_id=solace_cloud_service_id
+            )
+        else:
+            solace_cloud_config = None
+
         self.solace_config = SolaceConfig(
             vmr_host=self.module.params['host'],
             vmr_port=self.module.params['port'],
@@ -126,7 +153,8 @@ class SolaceTask:
             vmr_secure=self.module.params['secure_connection'],
             vmr_timeout=self.module.params['timeout'],
             x_broker=self.module.params.get('x_broker', ''),
-            vmr_sempVersion=self.module.params.get('semp_version', '')
+            vmr_sempVersion=self.module.params.get('semp_version', ''),
+            solace_cloud_config=solace_cloud_config
         )
         return
 
@@ -263,6 +291,13 @@ def arg_spec_broker():
     )
 
 
+def arg_spec_solace_cloud_config():
+    return dict(
+        solace_cloud_api_token=dict(type='str', require=False, no_log=True, default=None),
+        solace_cloud_service_id=dict(type='str', require=False, default=None)
+    )
+
+
 def arg_spec_vpn():
     return dict(
         msg_vpn=dict(type='str', required=True)
@@ -351,20 +386,27 @@ def _type_conversion(d):
     return d
 
 
-# response contains 1 dict if lookup_item/key is found
-# if lookup_item is not found, response http-code: 400 with extra info in meta.error
 def get_configuration(solace_config, path_array, key):
     ok, resp = make_get_request(solace_config, path_array)
     if ok:
         return True, _build_config_dict(resp, key)
+    elif is_broker_solace_cloud(solace_config):
+        # check if status code was 404: not found
+        # returned by Solace Cloud API
+        if (type(resp) is not dict and resp.status_code == 404):
+            return True, dict()
     else:
+        # response contains 1 dict if lookup_item/key is found
+        # if lookup_item is not found, response http-code: 400 with extra info in meta.error
         # check if responseCode=400 and error.code=6 ==> not found
         if (type(resp) is dict
+                and 'responseCode' in resp.keys()
                 and resp['responseCode'] == 400
                 and 'error' in resp.keys()
                 and 'code' in resp['error'].keys()
                 and resp['error']['code'] == 6):
             return True, dict()
+
     return False, resp
 
 
@@ -431,33 +473,81 @@ def get_list(solace_config, path_array, query_params):
 def log_http_roundtrip(resp):
     # body is either empty or of type 'bytes'
     if hasattr(resp.request, 'body') and resp.request.body is not None:
-        body = json.loads(resp.request.body.decode())
+        request_body = json.loads(resp.request.body.decode())
     else:
-        body = "{}"
+        request_body = "{}"
+
+    if resp.text:
+        resp_body = json.loads(resp.text)
+    else:
+        resp_body = None
 
     log = {
         'request': {
             'method': resp.request.method,
             'url': resp.request.url,
             'headers': dict(resp.request.headers),
-            'body': body
+            'body': request_body
         },
         'response': {
-            'code': resp.status_code,
+            'status_code': resp.status_code,
             'reason': resp.reason,
             'url': resp.url,
             'headers': dict(resp.headers),
-            'body': json.loads(resp.text)
+            'body': resp_body
         }
     }
-    logging.debug("http-roundtrip-log=\n%s", json.dumps(log, indent=2))
+    logging.debug("\n%s", json.dumps(log, indent=2))
     return
 
 
-def _parse_response(resp):
+def _wait_solace_cloud_request_completed(solace_config, request_resp):
+    # GET https://api.solace.cloud/api/v0/services/{paste-your-serviceId-here}/requests/{{requestId}}
+    request_resp_body = json.loads(request_resp.text)
+    request_id = request_resp_body['data']['id']
+    path_array = [SOLACE_CLOUD_API_SERVICES_BASE_PATH, solace_config.solace_cloud_config['service_id'], 'requests', request_id]
+    url = compose_path(path_array)
+    auth = BearerAuth(solace_config.solace_cloud_config['api_token'])
+    is_completed = False
+    try_count = 0
+    retries = 12
+    delay = 5  # seconds
+
+    while not is_completed and try_count < retries:
+        try:
+            resp = requests.get(
+                        url,
+                        json=None,
+                        auth=auth,
+                        timeout=solace_config.vmr_timeout,
+                        headers={'x-broker-name': solace_config.x_broker},
+                        params=None
+            )
+            if ENABLE_LOGGING:
+                log_http_roundtrip(resp)
+            if resp.status_code != 200:
+                raise AnsibleError("GET request status error: {}".format(resp.status_code))
+        except requests.exceptions.ConnectionError as e:
+            raise AnsibleError("GET request status error: {}".format(str(e)))
+
+        if resp.text:
+            resp_body = json.loads(resp.text)
+            is_completed = (resp_body['data']['adminProgress'] == 'completed')
+            if is_completed:
+                return resp
+        else:
+            raise AnsibleError("GET request status error: no body found in response")
+        try_count += 1
+        time.sleep(delay)
+
+
+def _parse_response(solace_config, resp):
     if ENABLE_LOGGING:
         log_http_roundtrip(resp)
-    if resp.status_code != 200:
+    # Solace Cloud API returns 202: accepted
+    if resp.status_code == 202 and is_broker_solace_cloud(solace_config):
+        resp = _wait_solace_cloud_request_completed(solace_config, resp)
+    elif resp.status_code != 200:
         return False, parse_bad_response(resp)
     return True, parse_good_response(resp)
 
@@ -469,7 +559,19 @@ def parse_good_response(resp):
     return dict()
 
 
+HTTP_CODE_REASON = dict(
+    _401="Unauthorized",
+    _404="Not Found"
+)
+
+
+def _get_reason(status_code):
+    return HTTP_CODE_REASON.get("_" + str(status_code))
+
+
 def parse_bad_response(resp):
+    if not resp.text:
+        return resp
     j = resp.json()
     if 'meta' in j.keys() and \
             'error' in j['meta'].keys() and \
@@ -477,14 +579,17 @@ def parse_bad_response(resp):
         # return j['meta']['error']['description']
         # we want to see the full message, including the code & request
         return j['meta']
-    return 'Unknown error'
+    return dict(status_code=resp.status_code,
+                reason=_get_reason(resp.status_code),
+                body=json.loads(resp.text)
+                )
 
 
 def compose_path(path_array):
     if not type(path_array) is list:
         raise TypeError("argument 'path_array' is not an array but {}".format(type(path_array)))
     # ensure elements are 'url encoded'
-    # except first one: /SEMP/v2/config
+    # except first one: SEMP_V2_CONFIG or SOLACE_CLOUD_API_SERVICES_BASE_PATH
     paths = []
     for i, path_elem in enumerate(path_array):
         if i > 0:
@@ -494,16 +599,46 @@ def compose_path(path_array):
     return '/'.join(paths)
 
 
+def compose_solace_cloud_body(operation, type, data):
+    return {
+        'operation': operation,
+        type: data
+    }
+
+
+def is_broker_solace_cloud(solace_config):
+    if solace_config.solace_cloud_config is None:
+        return False
+    return True
+
+
+class BearerAuth(requests.auth.AuthBase):
+    def __init__(self, token):
+        self.token = token
+
+    def __call__(self, r):
+        r.headers["authorization"] = "Bearer " + self.token
+        return r
+
+
 def _make_request(func, solace_config, path_array, json=None):
 
     path = compose_path(path_array)
 
     try:
+        if(is_broker_solace_cloud(solace_config)):
+            url = path
+            auth = BearerAuth(solace_config.solace_cloud_config['api_token'])
+        else:
+            url = solace_config.vmr_url + path
+            auth = solace_config.vmr_auth
+
         return _parse_response(
+            solace_config,
             func(
-                solace_config.vmr_url + path,
+                url,
                 json=json,
-                auth=solace_config.vmr_auth,
+                auth=auth,
                 timeout=solace_config.vmr_timeout,
                 headers={'x-broker-name': solace_config.x_broker},
                 params=None
