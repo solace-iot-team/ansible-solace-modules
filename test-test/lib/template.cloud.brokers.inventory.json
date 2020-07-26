@@ -3,11 +3,12 @@
     "hosts": {
       "solace-cloud-1": {
         "meta": {
-          "isSolaceCloud": true,
-          "account": "{account}",
-          "service": "{service}"
+          "account": "{account-name}",
+          "service": "{service-name}"
         },
         "ansible_connection": "local",
+        "solace_cloud_api_token": "{api-token}",
+        "solace_cloud_service_id": "{service-id}",
         "sempv2_host": "{host}.messaging.solace.cloud",
         "sempv2_port": 943,
         "sempv2_is_secure_connection": true,
