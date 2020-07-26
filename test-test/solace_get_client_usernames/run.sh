@@ -48,13 +48,13 @@ rm -f $ANSIBLE_SOLACE_LOG_FILE
 # SELECT
   # select inventory
   BROKERS_INVENTORY="$SCRIPT_PATH/../lib/local.broker.inventory.json"
-  BROKERS_INVENTORY="$SCRIPT_PATH/../lib/cloud.broker.inventory.json"
+  BROKERS_INVENTORY="$SCRIPT_PATH/../lib/cloud.brokers.inventory.json"
   # select broker(s) inside inventory
   BROKERS="all"
 # END SELECT
 
 
-PLAYBOOK="$SCRIPT_PATH/solace_get_client_usernames.playbook.yml"
+PLAYBOOK="$SCRIPT_PATH/playbook.yml"
 
 $SCRIPT_PATH/../wait_until_brokers_available/_run.call.sh $BROKERS_INVENTORY
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
