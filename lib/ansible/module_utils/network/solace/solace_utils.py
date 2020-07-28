@@ -306,7 +306,7 @@ def arg_spec_vpn():
 
 def arg_spec_virtual_router():
     return dict(
-        virtual_router=dict(type='str', default='primary', choice=['primary', 'backup'])
+        virtual_router=dict(type='str', default='primary', choices=['primary', 'backup'])
     )
 
 
