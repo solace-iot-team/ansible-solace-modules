@@ -44,6 +44,9 @@ except ImportError:
     REQUESTS_IMP_ERR = traceback.format_exc()
     HAS_REQUESTS = False
 
+""" Default Whitelist Keys """
+DEFAULT_WHITELIST_KEYS = ['password']
+
 """ Solace Cloud reources """
 SOLACE_CLOUD_API_SERVICES_BASE_PATH = 'https://api.solace.cloud/api/v0/services'
 SOLACE_CLOUD_REQUESTS = 'requests'
@@ -183,7 +186,9 @@ class SolaceTask:
         # else response was good
         current_configuration = resp
         # whitelist of configuration items that are not returned by GET
-        whitelist = ['password']
+        whitelist = DEFAULT_WHITELIST_KEYS
+        whitelist.extend(self.get_whitelist_keys())
+        required_together_keys_list = self.get_required_together_keys()
 
         if self.lookup_item() in current_configuration:
             if self.module.params['state'] == 'absent':
@@ -203,13 +208,38 @@ class SolaceTask:
                     removed_keys = [item for item in settings if item in whitelist]
                     # fail if any unexpected settings found
                     if len(bad_keys):
-                        self.module.fail_json(msg='Invalid key(s): ' + ', '.join(bad_keys), **result)
+                        msg = "invalid key(s) found in 'settings'"
+                        result['response'] = dict(
+                            invalid_keys=', '.join(bad_keys),
+                            hint=[
+                                    "possible causes:",
+                                    "- wrong spelling or wrong key: check the SEMPv2 reference documentation",
+                                    "- module's 'whitelist' isn't up to date: raise an issue"
+                                ],
+                            valid_keys=list(current_settings) + removed_keys
+                        )
+                        self.module.fail_json(msg=msg, **result)
                     # changed keys are those that exist in settings and don't match current settings
                     changed_keys = [x for x in settings if x in current_settings.keys()
                                     and settings[x] != current_settings[x]]
                     # add back in anything from the whitelist
                     changed_keys = changed_keys + removed_keys
-                    # add any whitelisted items
+                    # add any 'required together' keys
+                    for together_keys in required_together_keys_list:
+                        add_keys = [x for x in changed_keys if x in together_keys]
+                        if(add_keys):
+                            changed_keys += together_keys
+                    # remove duplicates
+                    changed_keys = list(dict.fromkeys(changed_keys))
+                    # check if user has provided all the keys
+                    missing_keys = []
+                    for key in changed_keys:
+                        if key not in settings:
+                            missing_keys += [key]
+                    if len(missing_keys):
+                        msg = "missing key(s) in 'settings': " + ', '.join(missing_keys)
+                        self.module.fail_json(msg=msg, **result)
+
                     if len(changed_keys):
                         delta_settings = {key: settings[key] for key in changed_keys}
                         crud_args.append(delta_settings)
@@ -276,8 +306,19 @@ class SolaceTask:
             raise ValueError("lookup_key: '{}' not found in lookup_dict['{}']: '{}'".format(lookup_key, version_key, json.dumps(version_lookup_dict)))
         return version_lookup_dict[lookup_key]
 
+    def get_whitelist_keys(self):
+        if hasattr(self, 'WHITELIST_KEYS'):
+            return self.WHITELIST_KEYS
+        return []
+
+    def get_required_together_keys(self):
+        if hasattr(self, 'REQUIRED_TOGETHER_KEYS'):
+            return self.REQUIRED_TOGETHER_KEYS
+        return dict()
+
 
 # composable argument specs
+
 
 def arg_spec_broker():
     return dict(
@@ -645,6 +686,7 @@ def _make_request(func, solace_config, path_array, json=None):
             )
         )
     except requests.exceptions.ConnectionError as e:
+        logging.debug("ConnectionError: %s", str(e))
         return False, str(e)
 
 
