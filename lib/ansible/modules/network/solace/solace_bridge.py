@@ -35,59 +35,38 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = '''
 ---
-module: solace_bridge_tls_cn
+module: solace_bridge
 
-short_description: Configure a bridge object.
+version_added: "2.9.10"
+
+short_description: Configure a Bridge object.
 
 description:
-  - "Allows addition, removal and update of a bridge object in an idempotent manner."
-  - "Reference: https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/bridge/createMsgVpnBridge."
+  - "Configure a Bridge object. Allows addition, removal and update of a Bridge Object in an idempotent manner."
+
+notes:
+- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/bridge)."
 
 options:
   name:
     description: The bridge name. Maps to 'bridgeName' in the API.
     required: true
+    type: str
   virtual_router:
     description: The virtual router.
-    required: true
-  settings:
-    description: JSON dictionary of additional configuration, see Reference documentation.
     required: false
-  state:
-    description: Target state. [present|absent].
-    required: false
-    default: present
-  host:
-    description: Hostname of Solace Broker.
-    required: false
-    default: "localhost"
-  port:
-    description: Management port of Solace Broker.
-    required: false
-    default: 8080
-  msg_vpn:
-    description: The message vpn.
-    required: true
-  secure_connection:
-    description: If true, use https rather than http for querying.
-    required: false
-    default: false
-  username:
-    description: Administrator username for Solace Broker.
-    required: false
-    default: "admin"
-  password:
-    description: Administrator password for Solace Broker.
-    required: false
-    default: "admin"
-  timeout:
-    description: Connection timeout in seconds for the http request.
-    required: false
-    default: 1
-  x_broker:
-    description: Custom HTTP header with the broker virtual router id, if using a SEMPv2 Proxy/agent infrastructure.
-    required: false
+    type: str
+    default: primary
+    choices:
+      - primary
+      - backup
+      - auto
 
+extends_documentation_fragment:
+- solace.broker
+- solace.vpn
+- solace.settings
+- solace.state
 
 author:
   - Mark Street (mkst@protonmail.com)
@@ -135,6 +114,12 @@ response:
 class SolaceBridgeTask(su.SolaceTask):
 
     LOOKUP_ITEM_KEY = 'bridgeName'
+    WHITELIST_KEYS = ['remoteAuthenticationBasicPassword',
+                      'remoteAuthenticationClientCertPassword']
+    REQUIRED_TOGETHER_KEYS = [
+        ['remoteAuthenticationBasicClientUsername', 'remoteAuthenticationBasicPassword'],
+        ['remoteAuthenticationClientCertPassword', 'remoteAuthenticationClientCertContent']
+    ]
 
     def __init__(self, module):
         su.SolaceTask.__init__(self, module)
@@ -178,23 +163,19 @@ class SolaceBridgeTask(su.SolaceTask):
 
 
 def run_module():
-    """Entrypoint to module"""
+    """Entrypoint to module."""
     module_args = dict(
         name=dict(type='str', required=True),
-        virtual_router=dict(type='str', required=True),
-        msg_vpn=dict(type='str', required=True),
-        host=dict(type='str', default='localhost'),
-        port=dict(type='int', default=8080),
-        secure_connection=dict(type='bool', default=False),
-        username=dict(type='str', default='admin'),
-        password=dict(type='str', default='admin', no_log=True),
-        settings=dict(type='dict', require=False),
-        state=dict(default='present', choices=['absent', 'present']),
-        timeout=dict(default='1', require=False),
-        x_broker=dict(type='str', default='')
+        virtual_router=dict(type='str', default='auto', choices=['primary', 'backup', 'auto'])
     )
+    arg_spec = su.arg_spec_broker()
+    arg_spec.update(su.arg_spec_vpn())
+    arg_spec.update(su.arg_spec_crud())
+    # module_args override standard arg_specs
+    arg_spec.update(module_args)
+
     module = AnsibleModule(
-        argument_spec=module_args,
+        argument_spec=arg_spec,
         supports_check_mode=True
     )
 
@@ -205,7 +186,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 
