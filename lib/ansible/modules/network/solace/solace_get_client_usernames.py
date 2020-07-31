@@ -42,15 +42,16 @@ version_added: '2.9.10'
 short_description: Get a list of Client Username objects.
 
 description:
-- "Get a list of Client Username objects. Retrieves all client username objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
+- "Get a list of Client Username objects."
 
 notes:
-- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientUsername/getMsgVpnClientUsernames)."
+- "Reference Config: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientUsername/getMsgVpnClientUsernames)."
+- "Reference Monitor: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/monitor/index.html#/clientUsername/getMsgVpnClientUsernames)."
 
 extends_documentation_fragment:
 - solace.broker
 - solace.vpn
-- solace.query
+- solace.get_list
 
 seealso:
 - module: solace_client_username
@@ -61,6 +62,8 @@ author:
 '''
 
 EXAMPLES = '''
+
+# Config:
 
 - name: Get pre-existing client usernames
   solace_get_client_usernames:
@@ -89,6 +92,7 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
+Config API:
 result_list:
     description: The list of objects found containing requested fields.
     returned: on success
@@ -100,6 +104,35 @@ result_list:
         },
         {
             "clientUsername": "ansible-solace__test__2__"
+        }
+    ]
+
+Monitor API:
+result_list:
+    description: The list of objects found containing requested fields.
+    returned: on success
+    type: list
+    elements: complex
+    sample: [
+        {
+            "aclProfileName": "default",
+            "clientProfileName": "default",
+            "clientUsername": "ansible-solace__test__1__",
+            "dynamic": false,
+            "enabled": true,
+            "guaranteedEndpointPermissionOverrideEnabled": false,
+            "msgVpnName": "ansible-test",
+            "subscriptionManagerEnabled": false
+        },
+        {
+            "aclProfileName": "default",
+            "clientProfileName": "default",
+            "clientUsername": "ansible-solace__test__2__",
+            "dynamic": false,
+            "enabled": true,
+            "guaranteedEndpointPermissionOverrideEnabled": false,
+            "msgVpnName": "ansible-test",
+            "subscriptionManagerEnabled": false
         }
     ]
 
@@ -119,27 +152,16 @@ class SolaceGetClientUsernamesTask(su.SolaceTask):
     def get_list(self):
         # GET /msgVpns/{msgVpnName}/clientUsernames
         vpn = self.module.params['msg_vpn']
-        path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.CLIENT_USERNAMES]
-
-        query_params = self.module.params['query_params']
-        ok, resp = su.get_list(self.solace_config, path_array, query_params)
-        if ok:
-            queue_list = resp
-        else:
-            return False, resp
-
-        return True, queue_list
+        path_array = [su.MSG_VPNS, vpn, su.CLIENT_USERNAMES]
+        return self.execute_get_list(path_array)
 
 
 def run_module():
-    """Entrypoint to module"""
-
-    """Compose module arguments"""
     module_args = dict(
     )
     arg_spec = su.arg_spec_broker()
     arg_spec.update(su.arg_spec_vpn())
-    arg_spec.update(su.arg_spec_query())
+    arg_spec.update(su.arg_spec_get_list())
     # module_args override standard arg_specs
     arg_spec.update(module_args)
 
@@ -163,7 +185,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 
