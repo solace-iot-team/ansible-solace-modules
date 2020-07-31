@@ -104,6 +104,19 @@
         msg: "new client profile list count != 4"
       when: new_list_result.result_list_count != 4
 
+    - name: Get Monitor Info for new Client Profiles
+      solace_get_client_profiles:
+        api: monitor
+        query_params:
+          where:
+            - "clientProfileName==ansible-solace__test*"
+          select:
+      register: monitor_result
+
+    - name: Print Monitor Info for new Client Profiles
+      debug:
+        msg: "{{ monitor_result.result_list }}"
+
     - name: Remove all client profiles again
       solace_client_profile:
         name: "{{ item.name }}"

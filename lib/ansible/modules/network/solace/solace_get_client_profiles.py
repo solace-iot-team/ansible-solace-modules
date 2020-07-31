@@ -42,15 +42,16 @@ version_added: '2.9.11'
 short_description: Get a list of Client Profile objects.
 
 description:
-- "Get a list of Client Profile objects. Retrieves all client profile objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
+- "Get a list of Client Profile objects."
 
 notes:
-- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientProfile/getMsgVpnClientProfiles)."
+- "Reference Config: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientProfile/getMsgVpnClientProfiles)."
+- "Reference Monitor: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/monitor/index.html#/clientProfile/getMsgVpnClientProfiles)."
 
 extends_documentation_fragment:
 - solace.broker
 - solace.vpn
-- solace.query
+- solace.get_list
 
 seealso:
 - module: solace_client_profile
@@ -61,6 +62,8 @@ author:
 '''
 
 EXAMPLES = '''
+
+# Config:
 -
   name: "Test module: solace_get_client_profiles"
   hosts: "{{ brokers }}"
@@ -115,6 +118,7 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
+Config API:
 result_list:
     description: The list of objects found containing requested fields.
     returned: on success
@@ -126,6 +130,39 @@ result_list:
         },
         {
             "clientProfileName": "ansible-solace__test__4__"
+        }
+    ]
+
+Monitor API:
+result_list:
+    description: The list of objects found containing requested fields.
+    returned: on success
+    type: list
+    elements: complex
+    sample: [
+        {
+            "allowBridgeConnectionsEnabled": false,
+            "allowCutThroughForwardingEnabled": false,
+            "allowGuaranteedEndpointCreateEnabled": false,
+            "allowGuaranteedMsgReceiveEnabled": false,
+            "allowGuaranteedMsgSendEnabled": false,
+            "allowSharedSubscriptionsEnabled": false,
+            "allowTransactedSessionsEnabled": false,
+            "apiQueueManagementCopyFromOnCreateName": "",
+            "apiTopicEndpointManagementCopyFromOnCreateName": "",
+            "clientProfileName": "ansible-solace__test__1__",
+            "compressionEnabled": true,
+            "elidingDelay": 0,
+            "elidingEnabled": false,
+            "elidingMaxTopicCount": 256,
+            "eventClientProvisionedEndpointSpoolUsageThreshold": {
+                "clearPercent": 60,
+                "setPercent": 80
+            },
+            "eventConnectionCountPerClientUsernameThreshold": {
+                "clearPercent": 60,
+                "setPercent": 80
+            }
         }
     ]
 
@@ -145,16 +182,8 @@ class SolaceGetClientProfilesTask(su.SolaceTask):
     def get_list(self):
         # GET /msgVpns/{msgVpnName}/clientProfiles
         vpn = self.module.params['msg_vpn']
-        path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.CLIENT_PROFILES]
-
-        query_params = self.module.params['query_params']
-        ok, resp = su.get_list(self.solace_config, path_array, query_params)
-        if ok:
-            queue_list = resp
-        else:
-            return False, resp
-
-        return True, queue_list
+        path_array = [su.MSG_VPNS, vpn, su.CLIENT_PROFILES]
+        return self.execute_get_list(path_array)
 
 
 def run_module():
@@ -163,7 +192,7 @@ def run_module():
     )
     arg_spec = su.arg_spec_broker()
     arg_spec.update(su.arg_spec_vpn())
-    arg_spec.update(su.arg_spec_query())
+    arg_spec.update(su.arg_spec_get_list())
     # module_args override standard arg_specs
     arg_spec.update(module_args)
 
