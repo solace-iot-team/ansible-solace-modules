@@ -102,6 +102,19 @@
         msg: "new client username list count != 4"
       when: new_list_result.result_list_count != 4
 
+    - name: Get Monitor Info for new Client Usernames
+      solace_get_client_usernames:
+        api: monitor
+        query_params:
+          where:
+            - "clientUsername==ansible-solace__test*"
+          select:
+      register: monitor_result
+
+    - name: Print Monitor Info for new Client Usernames
+      debug:
+        msg: "{{ monitor_result.result_list }}"
+
     - name: Remove all client usernames again
       solace_client_username:
         name: "{{ item.name }}"
