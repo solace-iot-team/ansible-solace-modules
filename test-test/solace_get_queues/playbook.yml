@@ -84,9 +84,10 @@
       register: result
       loop: "{{ target_result_list.queues }}"
 
-    - name: Get new queues
+    - name: Get Config of new Queues
       solace_get_queues:
         msg_vpn: "{{ vpn }}"
+        api: config
         query_params:
           where:
             - "queueName==ansible-solace/test*"
@@ -110,6 +111,20 @@
       fail:
         msg: "new queue count != 4"
       when: new_queues_result.result_list_count != 4
+
+    - name: Get Monitor of new Queues
+      solace_get_queues:
+        msg_vpn: "{{ vpn }}"
+        api: monitor
+        query_params:
+          where:
+            - "queueName==ansible-solace/test*"
+          select:
+      register: new_queues_monitor_result
+
+    - name: Print Monitor Result
+      debug:
+        msg: "{{ new_queues_monitor_result.result_list }}"
 
     - name: Remove all queues again
       solace_queue:

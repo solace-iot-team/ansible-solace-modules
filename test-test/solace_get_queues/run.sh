@@ -53,7 +53,7 @@ rm -f $ANSIBLE_SOLACE_LOG_FILE
 # END SELECT
 
 
-PLAYBOOK="$SCRIPT_PATH/solace_get_queues.playbook.yml"
+PLAYBOOK="$SCRIPT_PATH/playbook.yml"
 
 $SCRIPT_PATH/../wait_until_brokers_available/_run.call.sh $BROKERS_INVENTORY
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
