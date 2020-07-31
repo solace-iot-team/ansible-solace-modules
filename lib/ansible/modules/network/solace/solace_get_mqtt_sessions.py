@@ -42,13 +42,16 @@ version_added: '2.9.10'
 short_description: Get a list of MQTT Session objects
 
 description:
-- "Get a list of MQTT Session objects. Retrieves all objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
-- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/mqttSession/getMsgVpnMqttSessions)."
+- "Get a list of MQTT Session objects."
+
+notes:
+- "Reference Config: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/mqttSession/getMsgVpnMqttSessions)."
+- "Reference Monitor: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/monitor/index.html#/mqttSession/getMsgVpnMqttSessions)."
 
 extends_documentation_fragment:
 - solace.broker
 - solace.vpn
-- solace.query
+- solace.get_list
 
 seealso:
 - module: solace_mqtt_session
@@ -58,6 +61,9 @@ author:
 '''
 
 EXAMPLES = '''
+
+# Config:
+
     - name: Get List of MQTT Sessions
       solace_get_mqtt_sessions:
         msg_vpn: "{{ vpn }}"
@@ -82,6 +88,8 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
+
+Config API:
 result_list:
     description: The list of objects found containing requested fields.
     returned: on success
@@ -102,6 +110,35 @@ result_list:
         }
     ]
 
+Monitor API:
+result_list:
+    description: The list of objects found containing requested fields.
+    returned: on success
+    type: list
+    elements: complex
+    sample: [
+      {
+            "clean": false,
+            "clientName": "#mqtt/ansible-solace_test_mqtt__1__/30",
+            "counter": {
+                "mqttConnackErrorTxCount": 0,
+                "mqttConnackTxCount": 0,
+                "mqttConnectRxCount": 0,
+                "mqttDisconnectRxCount": 0,
+                "mqttPubcompTxCount": 0,
+                "mqttPublishQos0RxCount": 0,
+                "mqttPublishQos0TxCount": 0,
+                "mqttPublishQos1RxCount": 0,
+                "mqttPublishQos1TxCount": 0,
+                "mqttPublishQos2RxCount": 0,
+                "mqttPubrecTxCount": 0,
+                "mqttPubrelRxCount": 0
+            },
+            "createdByManagement": true,
+            "enabled": true
+        }
+    ]
+
 result_list_count:
     description: Number of items in result_list.
     returned: on success
@@ -118,27 +155,16 @@ class SolaceGetMqttSessionsTask(su.SolaceTask):
     def get_list(self):
         # GET /msgVpns/{msgVpnName}/mqttSessions
         vpn = self.module.params['msg_vpn']
-        path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.MQTT_SESSIONS]
-
-        query_params = self.module.params['query_params']
-        ok, resp = su.get_list(self.solace_config, path_array, query_params)
-        if ok:
-            queue_list = resp
-        else:
-            return False, resp
-
-        return True, queue_list
+        path_array = [su.MSG_VPNS, vpn, su.MQTT_SESSIONS]
+        return self.execute_get_list(path_array)
 
 
 def run_module():
-    """Entrypoint to module"""
-
-    """Compose module arguments"""
     module_args = dict(
     )
     arg_spec = su.arg_spec_broker()
     arg_spec.update(su.arg_spec_vpn())
-    arg_spec.update(su.arg_spec_query())
+    arg_spec.update(su.arg_spec_get_list())
     # module_args override standard arg_specs
     arg_spec.update(module_args)
 
@@ -162,7 +188,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 
