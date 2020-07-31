@@ -101,7 +101,7 @@
       loop_control:
         loop_var: mqtt_session_item
 
-    - name: Get List of MQTT Sessions
+    - name: Get Config List of MQTT Sessions
       solace_get_mqtt_sessions:
         msg_vpn: "{{ vpn }}"
         query_params:
@@ -118,6 +118,20 @@
       fail:
         msg: "new mqtt sessions count != 4"
       when: get_sessions_result.result_list_count != 4
+
+    - name: Get Monitor List of MQTT Sessions
+      solace_get_mqtt_sessions:
+        msg_vpn: "{{ vpn }}"
+        api: monitor
+        query_params:
+          where:
+            - "mqttSessionClientId==ansible-solace_test_mqtt*"
+          select:
+      register: get_sessions_monitor_result
+
+    - name: Print Monitor Result of MQTT Sessions
+      debug:
+        msg: "{{ get_sessions_monitor_result.result_list }}"
 
     - name: Deleting Mqtt Sessions
       solace_mqtt_session:
