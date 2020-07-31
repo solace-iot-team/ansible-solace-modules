@@ -41,7 +41,7 @@ rm -f $ANSIBLE_SOLACE_LOG_FILE
 ##############################################################################################################################
 # Run
 
-PLAYBOOK="$SCRIPT_PATH/solace_mqtt_session.playbook.yml"
+PLAYBOOK="$SCRIPT_PATH/playbook.yml"
 BROKERS="all"
 
 ansible-playbook -i $BROKERS_INVENTORY \

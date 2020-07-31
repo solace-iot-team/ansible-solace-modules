@@ -58,7 +58,7 @@
         state: present
       loop: "{{ mqtt_session_item.subscriptions }}"
 
-    - name: Get all subscriptions
+    - name: Get Config of all Subscriptions
       solace_get_mqtt_session_subscriptions:
         client_id: "{{ mqtt_session_item.mqttSessionClientId }}"
         query_params:
@@ -75,6 +75,20 @@
       fail:
         msg: "new mqtt session subscription count != 3"
       when: get_subscription_result.result_list_count != 3
+
+    - name: Get Monitor of all Subscriptions
+      solace_get_mqtt_session_subscriptions:
+        client_id: "{{ mqtt_session_item.mqttSessionClientId }}"
+        api: monitor
+        query_params:
+          where:
+            - "subscriptionTopic==ansible-solace/test/*"
+          select:
+      register: get_subscription_monitor_result
+
+    - name: Print Monitor Result of MQTT Session Subscriptions
+      debug:
+        msg: "{{ get_subscription_monitor_result.result_list }}"
 
     - name: Enable Mqtt Session
       solace_mqtt_session:
