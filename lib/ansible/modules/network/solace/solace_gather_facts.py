@@ -33,20 +33,33 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 import ansible.module_utils.network.solace.solace_utils as su
 from ansible.module_utils.basic import AnsibleModule
 import requests
+from ansible.errors import AnsibleError
+import xmltodict
+
 
 DOCUMENTATION = '''
 ---
-module: solace_get_facts
+module: solace_gather_facts
 
-short_description: Retrieves facts from the Solace event broker using the '/about' API and sets 'ansible_facts'.
+short_description: Retrieve facts from the Solace event broker and set 'ansible_facts.solace'.
 
-description:
-  - "Retrieves facts from the Solace event broker from the '/about' resource and sets 'ansible_facts.solace' for the rest of the playbook."
-  - "Call at the beginning of the playbook so all subsequent tasks can use '{{ ansible_facts.solace.<path-to-fact> }}'."
-  - "Reference: https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/about."
+description: >
+  Retrieves facts from the Solace event broker and set 'ansible_facts.solace'.
+  Call at the beginning of the playbook so all subsequent tasks can use '{{ ansible_facts.solace.<path-to-fact> }}' or M(solace_get_facts) module.
+  Supports Solace Cloud and brokers.
+  Retrieves: service/broker info, about info, virtual router name.
+
+notes:
+- "Reference about: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/about)."
+- "Reference broker: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/all/getBroker)."
+- "Reference Solace Cloud: U(https://docs.solace.com/Solace-Cloud/ght_use_rest_api_services.htm) - Get Service / Connections Details."
 
 extends_documentation_fragment:
 - solace.broker
+- solace.solace_cloud_config
+
+seealso:
+- module: solace_get_facts
 
 author:
   - Ricardo Gomez-Ulmke (ricardo.gomez-ulmke@solace.com)
@@ -54,10 +67,10 @@ author:
 
 EXAMPLES = '''
 -
-  name: Get Facts
-
-  hosts: "{{ broker }}"
-
+  name: "Get Information about the broker / service"
+  hosts: "{{ brokers }}"
+  gather_facts: no
+  any_errors_fatal: true
   module_defaults:
     solace_get_facts:
       host: "{{ sempv2_host }}"
@@ -66,61 +79,158 @@ EXAMPLES = '''
       username: "{{ sempv2_username }}"
       password: "{{ sempv2_password }}"
       timeout: "{{ sempv2_timeout }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
 
   tasks:
 
-    - name: Get Solace Facts
+    - name: Gather Solace Facts
       solace_get_facts:
 
-    - name: show ansible_facts.solace
-      debug:
-        msg: "ansible_facts.solace={{ ansible_facts.solace }}"
-
-    - name: show API version
-      debug:
-        msg: "api version={{ ansible_facts.solace.about.api.sempVersion }}"
-
-    - name: show server
-      debug:
-        msg: "server={{ ansible_facts.solace.about.Server }}"
-
-    - name: show msg vpns
-      debug:
-        msg: "msg vpns={{ ansible_facts.solace.about.user.msgVpns }}"
+    - name: "Save hostvars to ./hostvars.json"
+      local_action:
+        module: copy
+        content: "{{ hostvars | to_nice_json }}"
+        dest: ./hostvars.json
 
 '''
 
 RETURN = '''
 ansible_facts.solace:
-    description: The facts as returned from '/about' calls.
+    description: The facts as returned from the APIs.
     type: dict
+    returned: on success
+    elements: complex
+    sample:
+
+    "ansible_facts": {
+        "solace": {
+
+        # Common
+
+            "Server": "Solace_VMR/9.6.0.27",
+            "about": {
+                "api": {
+                    "platform": "VMR",
+                    "sempVersion": "2.17"
+                },
+                "user": {
+                    "globalAccessLevel": "VALUE_SPECIFIED_IN_NO_LOG_PARAMETER",
+                    "msgVpns": [
+                        {
+                            "accessLevel": "read-write",
+                            "msgVpnName": "default"
+                        }
+                    ]
+                }
+            },
+
+        # for brokers
+            "isSolaceCloud": false,
+            "service": {
+                "authClientCertRevocationCheckMode": "none",
+                "serviceAmqpEnabled": true,
+                "serviceAmqpTlsListenPort": 0,
+                ...
+            }
+        # for Solace Cloud
+            "isSolaceCloud": true,
+            "service": {
+                "accountingLimits": [
+                    {
+                        "id": "NetworkUsage",
+                        "thresholds": [
+                            {
+                                "type": "warning",
+                                "value": "75"
+                            }
+                        ],
+                        "unit": "bytes",
+                        "value": "2000000000"
+                    }
+                ...
+
 '''
 
 
-class SolaceGetFactsTask(su.SolaceTask):
+class SolaceGatherFactsTask(su.SolaceTask):
 
     def __init__(self, module):
         su.SolaceTask.__init__(self, module)
 
-    def get_facts(self):
+    def _get_about_info(self):
+        # GET /about, /about/api, /about/user, /about/user/msgVpns
+        about_info = dict()
 
-        facts = dict()
-
-        paths = [
+        path_array_list = [
             ["about"],
             ["about", "user"],
             ["about", "user", "msgVpns"],
             ["about", "api"]
         ]
 
-        for path in paths:
-            ok, resp, headers = make_get_request(self.solace_config, [su.SEMP_V2_CONFIG] + path)
+        for path_array in path_array_list:
+            ok, resp, headers = make_get_request(self.solace_config, [su.SEMP_V2_CONFIG] + path_array)
             if ok:
-                addPathValue(facts, path, resp)
+                addPathValue(about_info, path_array, resp)
             else:
                 return False, resp
 
-        facts['about']['Server'] = headers['Server']
+        about_info['isSolaceCloud'] = su.is_broker_solace_cloud(self.solace_config)
+        about_info['Server'] = headers['Server']
+
+        return True, about_info
+
+    def _get_service_info_solace_cloud(self):
+        # https://api.solace.cloud/api/v0/services/{{serviceId}}
+        path_array = [su.SOLACE_CLOUD_API_SERVICES_BASE_PATH, self.solace_config.solace_cloud_config['service_id']]
+        return su.make_get_request(self.solace_config, path_array)
+
+    def _get_service_info_broker(self):
+        # GET /
+        ok, resp, headers = make_get_request(self.solace_config, [su.SEMP_V2_CONFIG] + [''])
+        if not ok:
+            return False, resp
+        # get the virutal router name via SEMP v1
+        xml_post_cmd = "<rpc><show><router-name></router-name></show></rpc>"
+        ok, resp_virtual_router = make_sempv1_post_request(self.solace_config, xml_post_cmd)
+        if not ok:
+            return False, resp_virtual_router
+        resp['virtualRouterName'] = resp_virtual_router['rpc-reply']['rpc']['show']['router-name']['router-name']
+
+        return ok, resp
+
+    def _get_service_info(self):
+
+        service_info = dict()
+
+        if(su.is_broker_solace_cloud(self.solace_config)):
+            ok, resp = self._get_service_info_solace_cloud()
+        else:
+            ok, resp = self._get_service_info_broker()
+
+        if not ok:
+            return False, resp
+
+        service_info = resp
+
+        return True, service_info
+
+    def gather_facts(self):
+
+        facts = dict(
+            service=dict()
+        )
+
+        ok, resp = self._get_about_info()
+        if not ok:
+            return False, resp
+        facts = resp
+
+        ok, resp = self._get_service_info()
+        if not ok:
+            return False, resp
+        facts['service'] = resp
 
         return True, facts
 
@@ -148,20 +258,44 @@ def make_get_request(solace_config, path_array):
         return False, str(e), dict()
 
 
+def make_sempv1_post_request(solace_config, xml_data):
+    headers = {
+        'Content-Type': 'application/xml',
+        'x-broker-name': solace_config.x_broker
+    }
+    resp = requests.post(
+                solace_config.vmr_url + "/SEMP",
+                data=xml_data,
+                auth=solace_config.vmr_auth,
+                timeout=solace_config.vmr_timeout,
+                headers=headers,
+                params=None
+            )
+    if su.ENABLE_LOGGING:
+        su.log_http_roundtrip(resp)
+    if resp.status_code != 200:
+        raise AnsibleError("SEMP v1 call not successful. Pls check the log and raise an issue.")
+    resp_body = xmltodict.parse(resp.text)
+    return True, resp_body
+
+
 def addPathValue(dictionary, path_array, value):
     if len(path_array) > 1:
         if path_array[0] not in dictionary.keys():
             dictionary[path_array[0]] = {}
         addPathValue(dictionary[path_array[0]], path_array[1:], value)
     else:
-        dictionary[path_array[0]] = value
+        if(path_array[0] == ''):
+            dictionary['broker'] = value
+        else:
+            dictionary[path_array[0]] = value
 
 
 def run_module():
-    """Entrypoint to module."""
     module_args = dict(
     )
     arg_spec = su.arg_spec_broker()
+    arg_spec.update(su.arg_spec_solace_cloud_config())
     # module_args override standard arg_specs
     arg_spec.update(module_args)
 
@@ -175,12 +309,12 @@ def run_module():
         ansible_facts=dict()
     )
 
-    solace_task = SolaceGetFactsTask(module)
-    ok, resp_or_facts = solace_task.get_facts()
+    solace_task = SolaceGatherFactsTask(module)
+    ok, resp = solace_task.gather_facts()
     if not ok:
-        module.fail_json(msg=resp_or_facts, **result)
+        module.fail_json(msg=resp, **result)
 
-    result['ansible_facts']['solace'] = resp_or_facts
+    result['ansible_facts']['solace'] = resp
     module.exit_json(**result)
 
 

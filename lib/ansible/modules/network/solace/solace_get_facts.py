@@ -40,33 +40,101 @@ import traceback
 
 DOCUMENTATION = '''
 ---
-
-TODO
 module: solace_get_facts
 
-short_description: Retrieves facts from the Solace event broker using the '/about' API and sets 'ansible_facts'.
+short_description: Provides convenience functions to access solace facts gathered with M(solace_gather_facts).
 
 description: >
-  Retrieve facts from the Solace event broker and set 'ansible_facts.solace' for the rest of the playbook.
-  Call at the beginning of the playbook so all subsequent tasks can use '{{ ansible_facts.solace.<path-to-fact> }}'.
+  Provides convenience functions to access solace facts from 'ansible_facts.solace'.
+  Call M(solace_gather_facts) first.
 
-notes:
-- "Reference about: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/about)."
-- "Reference broker: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/all/getBroker)."
+options:
+  hostvars:
+    description: The playbook's 'hostvars'.
+    required: True
+    type: dict
+  host:
+    description: The playbook host to retrieve the facts from.
+    required: True
+    type: str
+  fields:
+    description: List of field names to retrieve from hostvars.
+    note: Retrieves the first occurrence of the field name only.
+    required: False
+    type: list
+    default: []
+    elements: str
+  field_funcs:
+    description: List of pre-built field functions that retrieve values from hostvars.
+    required: False
+    type: list
+    default: []
+    elements: str
+    choices:
+      - get_serviceSmfPlainTextListenPort
+      - get_serviceSmfCompressionListenPort
+      - get_serviceSmfTlsListenPort
+      - get_virtualRouterName
 
-extends_documentation_fragment:
-- solace.broker
+seealso:
+- module: solace_gather_facts
 
 author:
   - Ricardo Gomez-Ulmke (ricardo.gomez-ulmke@solace.com)
 '''
 
 EXAMPLES = '''
--
 
+    - name: Gather Solace Facts
+      solace_gather_facts:
+
+    - name: "Get Host Service Items: local"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: local
+        fields:
+        field_funcs:
+          - get_serviceSmfPlainTextListenPort
+          - get_serviceSmfCompressionListenPort
+          - get_serviceSmfTlsListenPort
+          - get_virtualRouterName
+      register: local_service_facts
+
+    - name: "Get Host Service Items: solace-cloud-1"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: solace-cloud-1
+        field_funcs:
+          - get_serviceSmfPlainTextListenPort
+          - get_serviceSmfCompressionListenPort
+          - get_serviceSmfTlsListenPort
+          - get_virtualRouterName
+      register: solace_cloud_1_service_facts
+
+    - name: "Show Host Service Facts"
+      debug:
+        msg:
+          - "local_service_facts:"
+          - "{{ local_service_facts }}"
+          - "solace_cloud_1_service_facts:"
+          - "{{ solace_cloud_1_service_facts }}"
 '''
 
 RETURN = '''
+
+facts:
+    description: The facts requested.
+    type: dict
+    returned: on success
+    elements: complex
+    sample:
+
+      "facts": {
+            "serviceSmfCompressionListenPort": 55003,
+            "serviceSmfPlainTextListenPort": 55555,
+            "serviceSmfTlsListenPort": 55443,
+            "virtualRouterName": "single-aws-eu-west-5e-4yyftdf"
+      }
 
 '''
 
@@ -285,7 +353,6 @@ def _get_field(search_dict, field):
 
 def run_module():
     module_args = dict(
-        # search_object=dict(type='dict', required=True),
         hostvars=dict(type='dict', required=True),
         host=dict(type='str', required=True),
         fields=dict(type='list', required=False, default=[], elements='str'),
