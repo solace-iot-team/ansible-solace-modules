@@ -1,0 +1,116 @@
+
+# ---------------------------------------------------------------------------------------------
+# MIT License
+#
+# Copyright (c) 2020, Solace Corporation, Ricardo Gomez-Ulmke (ricardo.gomez-ulmke@solace.com)
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# ---------------------------------------------------------------------------------------------
+
+-
+  name: "Get Information about the broker / service"
+  hosts: "{{ brokers }}"
+  gather_facts: no
+  any_errors_fatal: true
+  module_defaults:
+    solace_gather_facts:
+      host: "{{ sempv2_host }}"
+      port: "{{ sempv2_port }}"
+      secure_connection: "{{ sempv2_is_secure_connection }}"
+      username: "{{ sempv2_username }}"
+      password: "{{ sempv2_password }}"
+      timeout: "{{ sempv2_timeout }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
+
+
+  tasks:
+
+    - name: Gather Solace Facts
+      solace_gather_facts:
+
+    - name: "Save hostvars to ./hostvars.json"
+      local_action:
+        module: copy
+        content: "{{ hostvars | to_nice_json }}"
+        dest: ./hostvars.json
+
+    - name: "Save hostvars.local to ./hostvars.local.json"
+      local_action:
+        module: copy
+        content: "{{ hostvars['local']['ansible_facts']['solace'] | to_nice_json }}"
+        dest: ./hostvars.local.ansible_facts.json
+
+    - name: "Save hostvars.solace-cloud-1 to ./hostvars.solace-cloud-1.json"
+      local_action:
+        module: copy
+        content: "{{ hostvars['solace-cloud-1']['ansible_facts']['solace'] | to_nice_json }}"
+        dest: ./hostvars.solace-cloud-1.ansible_facts.json
+
+    - name: Show ansible_facts.solace
+      debug:
+        msg:
+          - "ansible_facts.solace:"
+          - "{{ ansible_facts.solace }}"
+
+    - name: Show Host Server
+      debug:
+        msg: "server={{ ansible_facts.solace.Server }}"
+
+    - name: Show Host API Version
+      debug:
+        msg: "api version={{ ansible_facts.solace.about.api.sempVersion }}"
+
+    - name: Show Host Message VPNs
+      debug:
+        msg: "msg vpns={{ ansible_facts.solace.about.user.msgVpns }}"
+
+    - name: "Get Host Service Facts: local"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: local
+        fields:
+        field_funcs:
+          - get_serviceSmfPlainTextListenPort
+          - get_serviceSmfCompressionListenPort
+          - get_serviceSmfTlsListenPort
+          - get_virtualRouterName
+      register: local_service_facts
+
+    - name: "Get Host Service Facts: solace-cloud-1"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: solace-cloud-1
+        field_funcs:
+          - get_serviceSmfPlainTextListenPort
+          - get_serviceSmfCompressionListenPort
+          - get_serviceSmfTlsListenPort
+          - get_virtualRouterName
+      register: solace_cloud_1_service_facts
+
+    - name: "Show Host Service Facts"
+      debug:
+        msg:
+          - "local_service_facts:"
+          - "{{ local_service_facts }}"
+          - "solace_cloud_1_service_facts:"
+          - "{{ solace_cloud_1_service_facts }}"
+
+###
+# The End.

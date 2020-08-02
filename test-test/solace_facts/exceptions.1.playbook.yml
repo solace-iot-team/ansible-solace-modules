@@ -24,9 +24,10 @@
 # ---------------------------------------------------------------------------------------------
 
 -
-  name: Get Facts
+  name: "Get Information about the broker / service"
   hosts: "{{ brokers }}"
   gather_facts: no
+  any_errors_fatal: true
   module_defaults:
     solace_get_facts:
       host: "{{ sempv2_host }}"
@@ -35,38 +36,26 @@
       username: "{{ sempv2_username }}"
       password: "{{ sempv2_password }}"
       timeout: "{{ sempv2_timeout }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
+
 
   tasks:
 
-    - name: Show host
-      debug:
-        msg:
-          - "inventory_hostname={{ inventory_hostname }}"
-
-    - name: Get Solace Facts
-      solace_get_facts:
-
+    - name: "Get Host Service Ports: local"
+      solace_get_facts_x:
+        hostvars: "{{ hostvars }}"
+        host: local
+        fields:
+          - serviceSmfPlainTextListenPort
+          - serviceSmfCompressionListenPort
+          - serviceSmfTlsListenPort
       register: result
+      failed_when: result.rc != 1
 
-    - name: show results
-      debug:
-        msg: "solace_get_facts.result={{ result.ansible_facts }}"
 
-    - name: show ansible_facts.solace
-      debug:
-        msg: "ansible_facts.solace={{ ansible_facts.solace }}"
-
-    - name: show API version
-      debug:
-        msg: "api version={{ ansible_facts.solace.about.api.sempVersion }}"
-
-    - name: show server
-      debug:
-        msg: "server={{ ansible_facts.solace.about.Server }}"
-
-    - name: show msg vpns
-      debug:
-        msg: "msg vpns={{ ansible_facts.solace.about.user.msgVpns }}"
+# ########## DEBUG ############
+#    - meta: end_play
 
 ###
 # The End.

@@ -32,6 +32,7 @@ import re
 import traceback
 import logging
 import json
+from json.decoder import JSONDecodeError
 import time
 import os
 from distutils.util import strtobool
@@ -44,6 +45,14 @@ except ImportError:
     REQUESTS_IMP_ERR = traceback.format_exc()
     HAS_REQUESTS = False
 
+try:
+    import xmltodict
+    HAS_XML2DICT = True
+except ImportError:
+    XML2DICT_IMP_ERR = traceback.format_exc()
+    HAS_XML2DICT = False
+
+
 """ Default Whitelist Keys """
 DEFAULT_WHITELIST_KEYS = ['password']
 
@@ -52,8 +61,9 @@ SOLACE_CLOUD_API_SERVICES_BASE_PATH = 'https://api.solace.cloud/api/v0/services'
 SOLACE_CLOUD_REQUESTS = 'requests'
 SOLACE_CLOUD_CLIENT_PROFILE_REQUESTS = 'clientProfileRequests'
 
-""" Standard reources """
+""" Standard resources """
 SEMP_V2_CONFIG = '/SEMP/v2/config'
+SEMP_V2_MONITOR = '/SEMP/v2/monitor'
 
 """ VPN level reources """
 
@@ -131,6 +141,8 @@ class SolaceTask:
     def __init__(self, module):
         self.module = module
 
+        self._check_imports()
+
         solace_cloud_api_token = self.module.params.get('solace_cloud_api_token', None)
         solace_cloud_service_id = self.module.params.get('solace_cloud_service_id', None)
         # either both are provided or none
@@ -161,10 +173,13 @@ class SolaceTask:
         )
         return
 
-    def do_task(self):
-
+    def _check_imports(self):
         if not HAS_REQUESTS:
-            self.module.fail_json(msg='Missing requests module', exception=REQUESTS_IMP_ERR)
+            self.module.fail_json(msg="Missing 'requests' module. Install first.", exception=REQUESTS_IMP_ERR)
+        if not HAS_XML2DICT:
+            self.module.fail_json(msg="Missing 'xml2dict' module. Install first", exception=XML2DICT_IMP_ERR)
+
+    def do_task(self):
 
         result = dict(
             changed=False,
@@ -316,6 +331,82 @@ class SolaceTask:
             return self.REQUIRED_TOGETHER_KEYS
         return dict()
 
+    def get_list_default_query_params(self):
+        return 'count=100'
+
+    def execute_get_list(self, path_array):
+
+        query = self.get_list_default_query_params()
+        if query is None:
+            query = ''
+
+        query_params = self.module.params['query_params']
+        if query_params:
+            if ("select" in query_params
+                    and query_params['select'] is not None
+                    and len(query_params['select']) > 0):
+                query += ('&' if query != '' else '')
+                query += "select=" + ','.join(query_params['select'])
+            if ("where" in query_params
+                    and query_params['where'] is not None
+                    and len(query_params['where']) > 0):
+                where_array = []
+                for i, where_elem in enumerate(query_params['where']):
+                    where_array.append(where_elem.replace('/', '%2F'))
+                query += ('&' if query != '' else '')
+                query += "where=" + ','.join(where_array)
+
+        api_path = SEMP_V2_CONFIG
+        if self.module.params['api'] == 'monitor':
+            api_path = SEMP_V2_MONITOR
+        path_array = [api_path] + path_array
+
+        path = compose_path(path_array)
+
+        url = self.solace_config.vmr_url + path + ("?" + query if query is not None else '')
+
+        result_list = []
+
+        hasNextPage = True
+
+        while hasNextPage:
+
+            try:
+                resp = requests.get(
+                            url,
+                            json=None,
+                            auth=self.solace_config.vmr_auth,
+                            timeout=self.solace_config.vmr_timeout,
+                            headers={'x-broker-name': self.solace_config.x_broker},
+                            params=None
+                )
+
+                if ENABLE_LOGGING:
+                    log_http_roundtrip(resp)
+
+                if resp.status_code != 200:
+                    return False, parse_bad_response(resp)
+                else:
+                    body = resp.json()
+                    if "data" in body.keys():
+                        result_list.extend(body['data'])
+
+            except requests.exceptions.ConnectionError as e:
+                return False, str(e)
+
+            if "meta" not in body:
+                hasNextPage = False
+            elif "paging" not in body["meta"]:
+                hasNextPage = False
+            elif "nextPageUri" not in body["meta"]["paging"]:
+                hasNextPage = False
+            else:
+                url = body["meta"]["paging"]["nextPageUri"]
+
+        return True, result_list
+
+###
+# End Class SolaceTask
 
 # composable argument specs
 
@@ -382,8 +473,9 @@ def arg_spec_crud():
     return arg_spec
 
 
-def arg_spec_query():
+def arg_spec_get_list():
     return dict(
+        api=dict(type='str', default='config', choices=['config', 'monitor']),
         query_params=dict(type='dict',
                           require=False,
                           options=dict(
@@ -451,75 +543,31 @@ def get_configuration(solace_config, path_array, key):
     return False, resp
 
 
-def get_list(solace_config, path_array, query_params):
-
-    query = 'count=100'
-
-    if query_params:
-        if "select" in query_params and len(query_params['select']) > 0:
-            query = query + "&select=" + ','.join(query_params['select'])
-        if "where" in query_params and len(query_params['where']) > 0:
-            where_array = []
-            for i, where_elem in enumerate(query_params['where']):
-                where_array.append(where_elem.replace('/', '%2F'))
-            query = query + "&where=" + ','.join(where_array)
-
-    path = compose_path(path_array)
-
-    url = solace_config.vmr_url + path + "?" + query
-
-    result_list = []
-
-    hasNextPage = True
-
-    while hasNextPage:
-
-        try:
-            resp = requests.get(
-                        url,
-                        json=None,
-                        auth=solace_config.vmr_auth,
-                        timeout=solace_config.vmr_timeout,
-                        headers={'x-broker-name': solace_config.x_broker},
-                        params=None
-            )
-
-            if ENABLE_LOGGING:
-                log_http_roundtrip(resp)
-
-            if resp.status_code != 200:
-                return False, parse_bad_response(resp)
-            else:
-                body = resp.json()
-                if "data" in body.keys():
-                    result_list.extend(body['data'])
-
-        except requests.exceptions.ConnectionError as e:
-            return False, str(e)
-
-        if "meta" not in body:
-            hasNextPage = False
-        elif "paging" not in body["meta"]:
-            hasNextPage = False
-        elif "nextPageUri" not in body["meta"]["paging"]:
-            hasNextPage = False
-        else:
-            url = body["meta"]["paging"]["nextPageUri"]
-
-    return True, result_list
-
-
 # request/response handling
 
+# data_dict = xmltodict.parse(xml_file.read())
+# json_data = json.dumps(data_dict)
+
 def log_http_roundtrip(resp):
-    # body is either empty or of type 'bytes'
-    if hasattr(resp.request, 'body') and resp.request.body is not None:
-        request_body = json.loads(resp.request.body.decode())
+    if hasattr(resp.request, 'body') and resp.request.body:
+        try:
+            decoded_body = resp.request.body.decode()
+            request_body = json.loads(decoded_body)
+        except AttributeError:
+            request_body = resp.request.body
     else:
         request_body = "{}"
 
     if resp.text:
-        resp_body = json.loads(resp.text)
+        try:
+            resp_body = json.loads(resp.text)
+        except JSONDecodeError:
+            # try XML parsing it
+            try:
+                resp_body = xmltodict.parse(resp.text)
+            except Exception:
+                # print as text at least
+                resp_body = resp.text
     else:
         resp_body = None
 
@@ -585,7 +633,7 @@ def _wait_solace_cloud_request_completed(solace_config, request_resp):
 def _parse_response(solace_config, resp):
     if ENABLE_LOGGING:
         log_http_roundtrip(resp)
-    # Solace Cloud API returns 202: accepted
+    # Solace Cloud API returns 202: accepted if long running request
     if resp.status_code == 202 and is_broker_solace_cloud(solace_config):
         resp = _wait_solace_cloud_request_completed(solace_config, resp)
     elif resp.status_code != 200:
@@ -610,6 +658,19 @@ def _get_reason(status_code):
     return HTTP_CODE_REASON.get("_" + str(status_code))
 
 
+def _create_hint_bad_response(meta):
+    # accessing solace cloud service using SEMPv2 API not allowed:
+    # error.code == 89
+    if 'error' in meta and 'code' in meta['error']:
+        if meta['error']['code'] == 89:
+            meta['hint'] = [
+                "This might be a Solace Cloud service.",
+                "If so, check the module's documentation on how to provide solace cloud parameters:",
+                "ansible-doc <module-name>"
+            ]
+    return meta
+
+
 def parse_bad_response(resp):
     if not resp.text:
         return resp
@@ -619,7 +680,7 @@ def parse_bad_response(resp):
             'description' in j['meta']['error'].keys():
         # return j['meta']['error']['description']
         # we want to see the full message, including the code & request
-        return j['meta']
+        return _create_hint_bad_response(j['meta'])
     return dict(status_code=resp.status_code,
                 reason=_get_reason(resp.status_code),
                 body=json.loads(resp.text)
