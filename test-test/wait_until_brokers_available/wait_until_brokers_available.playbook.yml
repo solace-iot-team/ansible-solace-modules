@@ -27,17 +27,9 @@
   name: "Check/wait until brokers available"
   hosts: "{{ brokers }}"
   gather_facts: no
+  any_errors_fatal: true
   vars:
     protocol: "{{ 'https' if sempv2_is_secure_connection else 'http' }}"
-
-  module_defaults:
-    solace_get_facts:
-      host: "{{ sempv2_host }}"
-      port: "{{ sempv2_port }}"
-      secure_connection: "{{ sempv2_is_secure_connection }}"
-      username: "{{ sempv2_username }}"
-      password: "{{ sempv2_password }}"
-      timeout: "{{ sempv2_timeout }}"
 
   tasks:
 
