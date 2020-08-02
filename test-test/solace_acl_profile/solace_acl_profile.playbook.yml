@@ -1,4 +1,4 @@
-#!/bin/bash
+
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -27,14 +27,17 @@
   name: Create / Update ACL Profile with subscr & pub topic exceptions
   hosts: "{{ brokers }}"
   gather_facts: no
+  any_errors_fatal: true
   module_defaults:
-    solace_get_facts:
+    solace_gather_facts:
       host: "{{ sempv2_host }}"
       port: "{{ sempv2_port }}"
       secure_connection: "{{ sempv2_is_secure_connection }}"
       username: "{{ sempv2_username }}"
       password: "{{ sempv2_password }}"
       timeout: "{{ sempv2_timeout }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
     solace_acl_profile:
       host: "{{ sempv2_host }}"
       port: "{{ sempv2_port }}"
@@ -71,7 +74,7 @@
   tasks:
 
     - name: Get Solace Facts
-      solace_get_facts:
+      solace_gather_facts:
 
     - name: Delete ACL Profile
       solace_acl_profile:

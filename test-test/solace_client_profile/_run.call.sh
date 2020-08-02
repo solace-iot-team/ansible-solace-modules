@@ -53,6 +53,9 @@ for playbook in ${playbooks[@]}; do
   ansible-playbook -i $BROKERS_INVENTORY \
                     $playbook \
                     --extra-vars "brokers=$BROKERS"
+
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi        
+
 done
 ###
 # The End.

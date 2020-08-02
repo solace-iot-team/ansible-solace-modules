@@ -27,6 +27,7 @@
   name: Get/Remove/Add/Update Queue objects with subscriptions
   hosts: "{{ brokers }}"
   gather_facts: no
+  any_errors_fatal: true
   module_defaults:
     solace_queue:
       host: "{{ sempv2_host }}"

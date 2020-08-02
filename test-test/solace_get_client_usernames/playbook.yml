@@ -26,6 +26,7 @@
   name: "Test module: solace_get_client_usernames"
   hosts: "{{ brokers }}"
   gather_facts: no
+  any_errors_fatal: true  
   module_defaults:
     solace_client_username:
       host: "{{ sempv2_host }}"

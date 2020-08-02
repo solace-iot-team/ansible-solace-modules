@@ -26,6 +26,7 @@
   name: "solace_client_profile: test exceptions."
   hosts: "{{ brokers }}"
   gather_facts: no
+  any_errors_fatal: true
   module_defaults:
     solace_client_profile:
       host: "{{ sempv2_host }}"

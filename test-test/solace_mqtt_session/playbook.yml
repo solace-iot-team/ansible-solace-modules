@@ -27,7 +27,17 @@
   name: Get/Remove/Add/Update MQTT Session objects with subscriptions
   hosts: "{{ brokers }}"
   gather_facts: no
+  any_errors_fatal: true
   module_defaults:
+    solace_gather_facts:
+      host: "{{ sempv2_host }}"
+      port: "{{ sempv2_port }}"
+      secure_connection: "{{ sempv2_is_secure_connection }}"
+      username: "{{ sempv2_username }}"
+      password: "{{ sempv2_password }}"
+      timeout: "{{ sempv2_timeout }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
     solace_client_username:
       host: "{{ sempv2_host }}"
       port: "{{ sempv2_port }}"
@@ -36,13 +46,6 @@
       password: "{{ sempv2_password }}"
       timeout: "{{ sempv2_timeout }}"
       msg_vpn: "{{ vpn }}"
-    solace_get_facts:
-      host: "{{ sempv2_host }}"
-      port: "{{ sempv2_port }}"
-      secure_connection: "{{ sempv2_is_secure_connection }}"
-      username: "{{ sempv2_username }}"
-      password: "{{ sempv2_password }}"
-      timeout: "{{ sempv2_timeout }}"
     solace_mqtt_session:
       host: "{{ sempv2_host }}"
       port: "{{ sempv2_port }}"
@@ -84,7 +87,7 @@
   tasks:
 
     - name: Get Solace Facts
-      solace_get_facts:
+      solace_gather_facts:
 
     - name: Create Client Username
       solace_client_username:

@@ -27,6 +27,7 @@
   name: "Test modules: solace_rdp, solace_rdp_rest_consumer, solace_rdp_rest_consumer_trust_cn, solace_rdp_queue_binding"
   hosts: "{{ brokers }}"
   gather_facts: no
+  any_errors_fatal: true
   module_defaults:
     solace_rdp:
       host: "{{ sempv2_host }}"
