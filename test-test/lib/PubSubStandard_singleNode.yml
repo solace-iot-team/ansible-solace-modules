@@ -26,9 +26,9 @@ services:
       #Web transport over TLS
       #- '443:443'
       #SEMP over TLS
-      - '943:943'
+      #- '1943:1943'
       #MQTT Default VPN
-      - '1883:1883'
+      #- '1883:1883'
       #AMQP Default VPN over TLS
       #- '5671:5671'
       #AMQP Default VPN
@@ -42,11 +42,11 @@ services:
       #SEMP / PubSub+ Manager
       - '8080:8080'
       #REST Default VPN
-      - '9000:9000'
+      #- '9000:9000'
       #REST Default VPN over TLS
       #- '9443:9443'
       #SMF
-      - '55555:55555'
+      #- '55555:55555'
       #SMF Compressed
       #- '55003:55003'
       #SMF over TLS
@@ -55,3 +55,8 @@ services:
       - username_admin_globalaccesslevel=admin
       - username_admin_password=admin
       - system_scaling_maxconnectioncount=100
+      - routername=ansible-solace__test
+
+
+###
+# The End.

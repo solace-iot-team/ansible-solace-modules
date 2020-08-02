@@ -2,11 +2,6 @@
   "all": {
     "hosts": {
       "local": {
-        "meta": {
-          "isSolaceCloud": false,
-          "account": "local",
-          "service": "localhost:8080"
-        },
         "ansible_connection": "local",
         "sempv2_host": "localhost",
         "sempv2_port": 8080,
