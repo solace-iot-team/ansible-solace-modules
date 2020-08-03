@@ -64,11 +64,11 @@ fi
 
 ansibleSolaceTests=(
   "wait_until_brokers_available" # this must go first in the list
+  #"solace_facts" - move to double
   "solace_get_client_profiles"
   "solace_client_profile"
   "solace_mqtt_session"
   "solace_rdp"
-  "solace_get_facts"
   "solace_queue"
   "solace_get_queues"
   "solace_get_client_usernames"
