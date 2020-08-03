@@ -23,48 +23,17 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+###############################################################################################
+# sets the base env for the test
+#
+# call: source ./_run.env.sh
+#
 
-brokerDockerImages='[
-    "solace/solace-pubsub-standard:9.3.1.28",
-    "solace/solace-pubsub-standard:9.5.0.30",
-    "solace/solace-pubsub-standard:9.6.0.27",
-    "solace/solace-pubsub-standard:latest"
-]'
-echo $brokerDockerImages
+export AS_TEST_SCRIPT_NAME=$(basename $(test -L "$0" && readlink "$0" || echo "$0"));
+export AS_TEST_SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+export AS_TEST_PROJECT_HOME=${AS_TEST_SCRIPT_PATH%%/test-test/*}
+export AS_TEST_HOME="$AS_TEST_PROJECT_HOME/test-test"
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
-
-brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImages")
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
-
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
-
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-echo
-
-docker ps -a
-
-echo; echo "Done."; echo
 
 ###
 # The End.

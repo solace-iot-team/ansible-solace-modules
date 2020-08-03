@@ -23,9 +23,22 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
+
+function showEnv() {
+  echo > /dev/tty
+  echo "# Test Environment:" > /dev/tty
+  env | grep AS_TEST  > /dev/tty
+  echo > /dev/tty
+  echo "# Ansible Environment:" > /dev/tty
+  env | grep ANSIBLE > /dev/tty
+  echo > /dev/tty
+  return 0
+}
+
 function wait4Key() {
   read -n 1 -p "press space to continue, CTRL-C to exit ..." x
   echo "$x" > /dev/tty
+  return 0
 }
 
 function wait4BrokerStart() {
@@ -75,12 +88,13 @@ function chooseTestRunnerEnv() {
 
 function chooseBrokerDockerImage() {
   if [[ $# != 1 ]]; then
-      echo "Usage: brokerDockerImage='\$(chooseBrokerDockerImage "full_path/brokerDockerImages.json")'" 1>&2
+      echo "Usage: brokerDockerImage='\$(chooseBrokerDockerImage images-json)'" 1>&2
       return 1
   fi
-  brokerDockerImagesFile=$1
-  brokerDockerImagesJSON=$(cat $brokerDockerImagesFile | jq -r '.brokerDockerImages' )
-  brokerDockerImagesArray=($(echo $brokerDockerImagesJSON | jq -r '.[]'))
+  # brokerDockerImagesFile=$1
+  # brokerDockerImagesJSON=$(cat $brokerDockerImagesFile | jq -r '.brokerDockerImages' )
+  # brokerDockerImagesArray=($(echo $brokerDockerImagesJSON | jq -r '.[]'))
+  brokerDockerImagesArray=($(echo $1 | jq -r '.[]'))
   # echo "brokerDockerImagesArray=${brokerDockerImagesArray[@]}" 1>&2
   # echo "brokerDockerImagesArray.length=${#brokerDockerImagesArray[@]}" 1>&2
 

@@ -23,64 +23,52 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
-echo; echo "##############################################################################################################"
-echo
-
-source ./_run.env.sh
+SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 
 ##############################################################################################################################
-# Choose Environment
+# Configure
 
-# select here or interactively
-  export AS_TEST_RUNNER_ENV="dev"
-  #export AS_TEST_RUNNER_ENV="package"
-
-source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
-
-  ############################################################################################################################
-  # SELECT
-    # logging
-    export ANSIBLE_SOLACE_ENABLE_LOGGING=true
-    # select inventory
-    export AS_TEST_BROKER_INVENTORY="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-    # export AS_TEST_BROKER_INVENTORY="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
-    # select broker(s) inside inventory
-    export AS_TEST_BROKERS="all"
-  # END SELECT
-
-
-x=$(showEnv)
-x=$(wait4Key)
+brokerInventoryFiles=(
+  "$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
+  "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+)
+ansibleSolaceTests=(
+  "solace_rdp"
+  "solace_queue"
+  "solace_mqtt_session"
+  "solace_get_queues"
+  "solace_get_client_usernames"
+  "solace_get_client_profiles"
+  "solace_acl_profile"
+  "solace_client_profile"
+)
 
 ##############################################################################################################################
 # Prepare
 
-ANSIBLE_SOLACE_LOG_FILE="$AS_TEST_SCRIPT_PATH/ansible-solace.log"
-rm -f $ANSIBLE_SOLACE_LOG_FILE
-
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $AS_TEST_BROKER_INVENTORY
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+for brokerInventoryFile in ${brokerInventoryFiles[@]}; do
+  $AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $brokerInventoryFile
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+done
 
 ##############################################################################################################################
 # Run
 
-playbook="./playbook.yml"
+for brokerInventoryFile in ${brokerInventoryFiles[@]}; do
+  for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
 
-# --step --check -vvv
-ansible-playbook -i $AS_TEST_BROKER_INVENTORY \
-                  $playbook \
-                  --extra-vars "brokers=$AS_TEST_BROKERS" \
-                  -vvv
-if [[ $? != 0 ]]; then
+    runScript="$SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $brokerInventoryFile"
 
-  echo "ERROR";
-  echo; echo "Show the log?"
-  echo; read -p 'Enter to continue, Ctrl-c to abort: ' continue; echo; echo
+    echo; echo "##############################################################################################################"
+    echo "# test: $ansibleSolaceTest"
+    echo "# calling: $runScript"
 
-  less $ANSIBLE_SOLACE_LOG_FILE
+    $runScript
 
-fi
+    if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
+
+  done
+done
 
 ###
 # The End.

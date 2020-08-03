@@ -23,48 +23,37 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+if [[ $# != 2 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory_1} {full_path}/{broker_inventory_2}'"; exit 1; fi
+BROKERS_INVENTORY_1=$1
+BROKERS_INVENTORY_2=$2
+##############################################################################################################################
+# Prepare
 
-brokerDockerImages='[
-    "solace/solace-pubsub-standard:9.3.1.28",
-    "solace/solace-pubsub-standard:9.5.0.30",
-    "solace/solace-pubsub-standard:9.6.0.27",
-    "solace/solace-pubsub-standard:latest"
-]'
-echo $brokerDockerImages
+ANSIBLE_SOLACE_LOG_FILE="$SCRIPT_PATH/ansible-solace.log"
+rm -f $ANSIBLE_SOLACE_LOG_FILE
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
+##############################################################################################################################
+# Run
+playbooks=(
+  "$SCRIPT_PATH/exceptions.1.playbook.yml"
+  "$SCRIPT_PATH/exceptions.2.playbook.yml"
+  "$SCRIPT_PATH/examples.playbook.yml"
+  "$SCRIPT_PATH/playbook.yml"
+)
 
-brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImages")
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+brokers="all"
 
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
+for playbook in ${playbooks[@]}; do
 
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
+  ansible-playbook \
+                    -i $BROKERS_INVENTORY_1 \
+                    -i $BROKERS_INVENTORY_2 \
+                    $playbook \
+                    --extra-vars "brokers=$brokers" \
 
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
 
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-echo
-
-docker ps -a
-
-echo; echo "Done."; echo
-
+done
 ###
 # The End.

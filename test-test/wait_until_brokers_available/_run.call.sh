@@ -23,13 +23,11 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-# test jq is installed
-res=$(jq --version)
-if [[ $? != 0 ]]; then echo "ERR >>> jq not found. aborting."; echo; exit 1; fi
-
-if [[ $# != 1 ]]; then echo "Usage: '_run.call.sh full_path/brokers.inventory.json'"; exit 1; fi
+if [[ $# != 1 ]]; then echo "Usage: '_run.call.sh {full_path}/{broker_inventory}'"; exit 1; fi
 BROKERS_INVENTORY=$1
+
+SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+
 
 ##############################################################################################################################
 # Prepare
@@ -40,13 +38,12 @@ rm -f $ANSIBLE_SOLACE_LOG_FILE
 ##############################################################################################################################
 # Run
 
-PLAYBOOK="$SCRIPT_PATH/wait_until_brokers_available.playbook.yml"
+PLAYBOOK="$SCRIPT_PATH/playbook.yml"
 BROKERS="all"
 
 ansible-playbook -i $BROKERS_INVENTORY \
                   $PLAYBOOK \
                   --extra-vars "brokers=$BROKERS" \
-                  # -vvv
 
 ###
 # The End.

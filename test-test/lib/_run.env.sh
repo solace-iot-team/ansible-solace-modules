@@ -23,48 +23,43 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+###############################################################################################
+# sets the base env for the test
+# - env vars
+# - test for required packages
+# - source the lib/functions.sh
+#
+# call: from {test}/_run.env.sh:
+#       source ./_run.env.sh
 
-brokerDockerImages='[
-    "solace/solace-pubsub-standard:9.3.1.28",
-    "solace/solace-pubsub-standard:9.5.0.30",
-    "solace/solace-pubsub-standard:9.6.0.27",
-    "solace/solace-pubsub-standard:latest"
-]'
-echo $brokerDockerImages
+# unset all vars first
+# save python interpreter
+ansiblePythonInterpreter=$ANSIBLE_PYTHON_INTERPRETER
+envVars=$(env | cut -d= -f1 | grep ANSIBLE)
+for envVar in ${envVars[@]}; do
+  unset $envVar
+done
+export ANSIBLE_PYTHON_INTERPRETER=$ansiblePythonInterpreter
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
+# test jq is installed
+res=$(jq --version)
+if [[ $? != 0 ]]; then echo "ERR >>> jq not found. aborting."; echo; exit 1; fi
 
-brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImages")
+# load the functions
+source $AS_TEST_HOME/lib/functions.sh
+
+# choose env if not pre-set
+env=$(chooseTestRunnerEnv $AS_TEST_RUNNER_ENV)
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+echo; echo "Running tests with environment: $env "; echo
+export AS_TEST_RUNNER_ENV=$env
 
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
-
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
-
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
+if [[ $AS_TEST_RUNNER_ENV == "dev" ]]; then
+  export ANSIBLE_MODULE_UTILS="$AS_TEST_PROJECT_HOME/lib/ansible/module_utils"
+  export ANSIBLE_LIBRARY="$AS_TEST_PROJECT_HOME/lib/ansible/modules"
+  export ANSIBLE_DOC_FRAGMENT_PLUGINS="$AS_TEST_PROJECT_HOME/lib/ansible/plugins/doc_fragments"
 fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-echo
-
-docker ps -a
-
-echo; echo "Done."; echo
 
 ###
 # The End.

@@ -1,4 +1,4 @@
-#!/bin/bash
+
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -23,48 +23,39 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+-
+  name: "Exceptions 1: Get Information about the broker / service"
+  hosts: "{{ brokers }}"
+  gather_facts: no
+  any_errors_fatal: true
+  module_defaults:
+    solace_gather_facts:
+      host: "{{ sempv2_host }}"
+      port: "{{ sempv2_port }}"
+      secure_connection: "{{ sempv2_is_secure_connection }}"
+      username: "{{ sempv2_username }}"
+      password: "{{ sempv2_password }}"
+      timeout: "{{ sempv2_timeout }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
 
-brokerDockerImages='[
-    "solace/solace-pubsub-standard:9.3.1.28",
-    "solace/solace-pubsub-standard:9.5.0.30",
-    "solace/solace-pubsub-standard:9.6.0.27",
-    "solace/solace-pubsub-standard:latest"
-]'
-echo $brokerDockerImages
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
+  tasks:
 
-brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImages")
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+    - name: "Get Host Service Ports: local"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: local
+        fields:
+          - serviceSmfPlainTextListenPort
+          - serviceSmfCompressionListenPort
+          - serviceSmfTlsListenPort
+      register: result
+      failed_when: result.rc != 1
 
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
 
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
-
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-echo
-
-docker ps -a
-
-echo; echo "Done."; echo
+# ########## DEBUG ############
+#    - meta: end_play
 
 ###
 # The End.

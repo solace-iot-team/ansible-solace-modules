@@ -1,31 +1,29 @@
-# TEST-Tests
-
-Work in progress. Does not fit with Ansible testing strategy nor CI/CD.
-
-Module tests and test runner.
+# Tests
 
 ## Run all Tests
-Multiple brokers:
+
+Brokers:
 - 1 cloud instance
-- pulls down multiple versions of pubsub+ standard docker images
+  - must exist
+  - create API token and add to `./lib/broker.inventories/cloud.broker.inventory.json`
+- pulls down multiple versions of Solace PubSub+ standard docker images
+
+### Configure Solace Cloud Instance
 
 ````bash
-# run all tests
+cd ./lib/broker.inventories
+cp template.cloud.broker.inventory.json cloud.broker.inventory.json
+vi cloud.broker.inventory.json
+
+>>> enter values
+
+````
+
+### Run Tests
+
+````bash
 ./run.sh
 ````
 
-## Run Single Test
-
-````bash
-# start & stop a local broker
-./start.local.broker.sh
-./stop.local.broker.sh
-````
-
-````bash
-cd <test-directory>
-
-./run.sh
-````
 ---
 The End.

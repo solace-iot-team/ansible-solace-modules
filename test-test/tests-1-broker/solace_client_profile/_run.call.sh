@@ -23,48 +23,35 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+if [[ $# != 1 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory}'"; exit 1; fi
+BROKERS_INVENTORY=$1
 
-brokerDockerImages='[
-    "solace/solace-pubsub-standard:9.3.1.28",
-    "solace/solace-pubsub-standard:9.5.0.30",
-    "solace/solace-pubsub-standard:9.6.0.27",
-    "solace/solace-pubsub-standard:latest"
-]'
-echo $brokerDockerImages
+##############################################################################################################################
+# Prepare
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
+ANSIBLE_SOLACE_LOG_FILE="$SCRIPT_PATH/ansible-solace.log"
+rm -f $ANSIBLE_SOLACE_LOG_FILE
 
-brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImages")
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+##############################################################################################################################
+# Run
 
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
+playbooks=(
+  "$SCRIPT_PATH/exceptions.playbook.yml"
+  "$SCRIPT_PATH/playbook.yml"
+)
 
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
+BROKERS="all"
 
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+for playbook in ${playbooks[@]}; do
 
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  ansible-playbook -i $BROKERS_INVENTORY \
+                    $playbook \
+                    --extra-vars "brokers=$BROKERS" \
 
-echo
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-docker ps -a
-
-echo; echo "Done."; echo
+done
 
 ###
 # The End.

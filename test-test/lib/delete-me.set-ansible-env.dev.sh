@@ -23,48 +23,30 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+################################################################################
+# usage: source set-ansible-env.dev.sh
+#
 
-brokerDockerImages='[
-    "solace/solace-pubsub-standard:9.3.1.28",
-    "solace/solace-pubsub-standard:9.5.0.30",
-    "solace/solace-pubsub-standard:9.6.0.27",
-    "solace/solace-pubsub-standard:latest"
-]'
-echo $brokerDockerImages
+export ANSIBLE_PYTHON_INTERPRETER=/usr/local/bin/python
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
+exit
 
-brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImages")
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+export ANSIBLE_SOLACE_PROJECT_PATH="/Users/rjgu/Dropbox/Solace-Contents/Solace-IoT-Team/ansible-dev/ansible-solace"
 
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
+export ANSIBLE_SOLACE_ENABLE_LOGGING=true
+# pip3 show ansible-solace
+ANSIBLE_SOLACE_HOME="$ANSIBLE_SOLACE_PROJECT_PATH/lib"
 
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
+export ANSIBLE_MODULE_UTILS="$ANSIBLE_SOLACE_HOME/ansible/module_utils"
+export ANSIBLE_LIBRARY="$ANSIBLE_SOLACE_HOME/ansible/modules"
+#export ANSIBLE_LOOKUP_PLUGINS="$ANSIBLE_SOLACE_HOME/ansible/plugins"
 
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 echo
-
-docker ps -a
-
-echo; echo "Done."; echo
+echo "Ansible env vars:"; echo
+env | grep ANSIBLE
+echo
 
 ###
 # The End.

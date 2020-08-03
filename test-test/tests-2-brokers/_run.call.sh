@@ -23,48 +23,40 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
 
-brokerDockerImages='[
-    "solace/solace-pubsub-standard:9.3.1.28",
-    "solace/solace-pubsub-standard:9.5.0.30",
-    "solace/solace-pubsub-standard:9.6.0.27",
-    "solace/solace-pubsub-standard:latest"
-]'
-echo $brokerDockerImages
+##############################################################################################################################
+# Configure
+brokerInventory_1="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
+brokerInventory_2="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
+ansibleSolaceTests=(
+  "solace_facts"
+)
 
-brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImages")
+##############################################################################################################################
+# Prepare
+
+$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $brokerInventory_1
+if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $brokerInventory_2
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
+##############################################################################################################################
+# Run
+for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
 
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
+  runScript="$SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $brokerInventory_1 $brokerInventory_2"
 
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  echo; echo "##############################################################################################################"
+  echo "# test: $ansibleSolaceTest"
+  echo "# calling: $runScript"
 
-docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  $runScript
 
-echo
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-docker ps -a
-
-echo; echo "Done."; echo
+done
 
 ###
 # The End.

@@ -1,5 +1,4 @@
 
 set-ansible-env.dev.sh
-cloud.brokers.inventory.*
 *_tls.yml
 secrets
