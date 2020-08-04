@@ -47,7 +47,7 @@ description: >
   Retrieves facts from the Solace event broker and set 'ansible_facts.solace'.
   Call at the beginning of the playbook so all subsequent tasks can use '{{ ansible_facts.solace.<path-to-fact> }}' or M(solace_get_facts) module.
   Supports Solace Cloud and brokers.
-  Retrieves: service/broker info, about info, virtual router name.
+  Retrieves: service/broker info, about info, virtual router name, messaging endpoints, etc.
 
 notes:
 - "Reference about: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/about)."
@@ -123,32 +123,9 @@ ansible_facts.solace:
                         }
                     ]
                 }
-            },
-
-        # for brokers
-            "isSolaceCloud": false,
-            "service": {
-                "authClientCertRevocationCheckMode": "none",
-                "serviceAmqpEnabled": true,
-                "serviceAmqpTlsListenPort": 0,
-                ...
             }
-        # for Solace Cloud
-            "isSolaceCloud": true,
-            "service": {
-                "accountingLimits": [
-                    {
-                        "id": "NetworkUsage",
-                        "thresholds": [
-                            {
-                                "type": "warning",
-                                "value": "75"
-                            }
-                        ],
-                        "unit": "bytes",
-                        "value": "2000000000"
-                    }
-                ...
+
+        # Service facts, vary between versions / broker, cloud ...
 
 '''
 
@@ -188,9 +165,17 @@ class SolaceGatherFactsTask(su.SolaceTask):
 
     def _get_service_info_broker(self):
         # GET /
-        ok, resp, headers = make_get_request(self.solace_config, [su.SEMP_V2_CONFIG] + [''])
+        # issue: not much info for brokers with semp api version < 2.17
+        # ok, resp, headers = make_get_request(self.solace_config, [su.SEMP_V2_CONFIG] + [''])
+        # if not ok:
+        #     return False, resp
+        # get service info via SEMP v1
+        xml_post_cmd = "<rpc><show><service></service></show></rpc>"
+        ok, resp_service = make_sempv1_post_request(self.solace_config, xml_post_cmd)
         if not ok:
-            return False, resp
+            return False, resp_service
+        resp = resp_service['rpc-reply']['rpc']['show']['service']['services']
+
         # get the virutal router name via SEMP v1
         xml_post_cmd = "<rpc><show><router-name></router-name></show></rpc>"
         ok, resp_virtual_router = make_sempv1_post_request(self.solace_config, xml_post_cmd)

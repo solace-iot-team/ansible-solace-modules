@@ -75,6 +75,7 @@ options:
       - get_serviceSmfCompressionListenPort
       - get_serviceSmfTlsListenPort
       - get_virtualRouterName
+      - get_serviceSMFMessagingEndpoints
 
 seealso:
 - module: solace_gather_facts
@@ -87,6 +88,15 @@ EXAMPLES = '''
 
     - name: Gather Solace Facts
       solace_gather_facts:
+
+    - name: "Get Host SMF Messaging Endpoints Facts: solace-cloud-1"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: solace-cloud-1
+        fields:
+        field_funcs:
+          - get_serviceSMFMessagingEndpoints
+      register: solace_cloud_1_smf_enpoints_facts
 
     - name: "Get Host Service Items: local"
       solace_get_facts:
@@ -129,12 +139,43 @@ facts:
     elements: complex
     sample:
 
-      "facts": {
+        "facts": {
             "serviceSmfCompressionListenPort": 55003,
             "serviceSmfPlainTextListenPort": 55555,
             "serviceSmfTlsListenPort": 55443,
             "virtualRouterName": "single-aws-eu-west-5e-4yyftdf"
-      }
+        }
+
+        "facts": {
+                "serviceMessagingEndpoints": {
+                    "SMF": {
+                        "CompressedSMF": {
+                            "uri": "tcp://mr4yqbkp31vav.messaging.solace.cloud:55003",
+                            "uriComponents": {
+                                "host": "mr4yqbkp31vav.messaging.solace.cloud",
+                                "port": 55003,
+                                "protocol": "tcp"
+                            }
+                        },
+                        "SMF": {
+                            "uri": "tcp://mr4yqbkp31vav.messaging.solace.cloud:55555",
+                            "uriComponents": {
+                                "host": "mr4yqbkp31vav.messaging.solace.cloud",
+                                "port": 55555,
+                                "protocol": "tcp"
+                            }
+                        },
+                        "SecuredSMF": {
+                            "uri": "tcps://mr4yqbkp31vav.messaging.solace.cloud:55443",
+                            "uriComponents": {
+                                "host": "mr4yqbkp31vav.messaging.solace.cloud",
+                                "port": 55443,
+                                "protocol": "tcps"
+                            }
+                        }
+                    }
+                }
+            }
 
 '''
 
@@ -169,7 +210,8 @@ class SolaceGetFactsTask():
             fail_reason = "Could not find 'ansible_facts' hostvars['{}']. Hint: Call 'solace_gather_facts' module first.".format(host)
             return False, fail_reason
         if 'solace' not in hostvars[host]['ansible_facts']:
-            raise AnsibleError("Could not find 'solace' in hostvars['{}']['ansible_facts']. Pls raise an issue.".format(host))
+            fail_reason = "Could not find 'solace' in hostvars['{}']['ansible_facts']. Hint: Call 'solace_gather_facts' module first.".format(host)
+            return False, fail_reason
 
         search_object = hostvars[host]['ansible_facts']['solace']
 
@@ -194,6 +236,8 @@ class SolaceGetFactsTask():
                         field, value = _get_serviceSmfTlsListenPort(search_object)
                     elif field_func == 'get_virtualRouterName':
                         field, value = _get_virtualRouterName(search_object)
+                    elif field_func == 'get_serviceSMFMessagingEndpoints':
+                        field, value = _get_serviceSMFMessagingEndpoints(search_object)
                     else:
                         fail_reason = "Unknown field_func: '{}'. Pls check the documentation for supported field functions: 'ansible-doc solace_get_facts'.".format(field_func)
                         return False, fail_reason
@@ -219,6 +263,82 @@ class SolaceGetFactsTask():
 #
 
 
+def _get_serviceSMFMessagingEndpoints(search_dict):
+    eps = dict(
+        SMF=dict(
+            SMF=dict(),
+            SecuredSMF=dict(),
+            CompressedSMF=dict()
+        )
+    )
+    if search_dict['isSolaceCloud']:
+        smf_dict = _get_sc_messaging_protocols_smf_dict(search_dict)
+        smf_end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='SMF')
+        sec_smf_end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='Secured SMF')
+        cmp_smf_end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='Compressed SMF')
+
+        smf_uri = _get_sc_messaging_protocol_endpoint_uri(smf_end_point_dict)
+        t = urlparse(smf_uri)
+        smf_protocol = t.scheme
+        smf_host = t.hostname
+
+        sec_smf_uri = _get_sc_messaging_protocol_endpoint_uri(sec_smf_end_point_dict)
+        t = urlparse(sec_smf_uri)
+        sec_smf_protocol = t.scheme
+        sec_smf_host = t.hostname
+
+        cmp_smf_uri = _get_sc_messaging_protocol_endpoint_uri(cmp_smf_end_point_dict)
+        t = urlparse(cmp_smf_uri)
+        cmp_smf_protocol = t.scheme
+        cmp_smf_host = t.hostname
+    else:
+        # smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
+        smf_protocol = 'n/a'
+        smf_host = 'n/a'
+        smf_uri = 'n/a'
+
+        sec_smf_protocol = 'n/a'
+        sec_smf_host = 'n/a'
+        sec_smf_uri = 'n/a'
+
+        cmp_smf_protocol = 'n/a'
+        cmp_smf_host = 'n/a'
+        cmp_smf_uri = 'n/a'
+
+    f, smf_port = _get_serviceSmfPlainTextListenPort(search_dict)
+    f, sec_smf_port = _get_serviceSmfTlsListenPort(search_dict)
+    f, cmp_smf_port = _get_serviceSmfCompressionListenPort(search_dict)
+    # put the dict together
+    # smf
+    smf = dict()
+    smf_ucs = dict()
+    smf_ucs['protocol'] = smf_protocol
+    smf_ucs['host'] = smf_host
+    smf_ucs['port'] = smf_port
+    smf['uriComponents'] = smf_ucs
+    smf['uri'] = smf_uri
+    eps['SMF']['SMF'] = smf
+    # secured smf
+    sec_smf = dict()
+    sec_smf_ucs = dict()
+    sec_smf_ucs['protocol'] = sec_smf_protocol
+    sec_smf_ucs['host'] = sec_smf_host
+    sec_smf_ucs['port'] = sec_smf_port
+    sec_smf['uriComponents'] = sec_smf_ucs
+    sec_smf['uri'] = sec_smf_uri
+    eps['SMF']['SecuredSMF'] = sec_smf
+    # compressed smf
+    cmp_smf = dict()
+    cmp_smf_ucs = dict()
+    cmp_smf_ucs['protocol'] = cmp_smf_protocol
+    cmp_smf_ucs['host'] = cmp_smf_host
+    cmp_smf_ucs['port'] = cmp_smf_port
+    cmp_smf['uriComponents'] = cmp_smf_ucs
+    cmp_smf['uri'] = cmp_smf_uri
+    eps['SMF']['CompressedSMF'] = cmp_smf
+    return 'serviceMessagingEndpoints', eps
+
+
 def _get_serviceSmfPlainTextListenPort(search_dict):
     if search_dict['isSolaceCloud']:
         smf_dict = _get_sc_messaging_protocols_smf_dict(search_dict)
@@ -226,7 +346,8 @@ def _get_serviceSmfPlainTextListenPort(search_dict):
         uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
         value = _get_port_from_uri(uri)
     else:
-        value = _get_field(search_dict, 'serviceSmfPlainTextListenPort')
+        smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
+        value = smf_dict['listen-port']
     return 'serviceSmfPlainTextListenPort', value
 
 
@@ -237,7 +358,8 @@ def _get_serviceSmfCompressionListenPort(search_dict):
         uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
         value = _get_port_from_uri(uri)
     else:
-        value = _get_field(search_dict, 'serviceSmfCompressionListenPort')
+        smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
+        value = smf_dict['compression-listen-port']
     return 'serviceSmfCompressionListenPort', value
 
 
@@ -248,7 +370,8 @@ def _get_serviceSmfTlsListenPort(search_dict):
         uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
         value = _get_port_from_uri(uri)
     else:
-        value = _get_field(search_dict, 'serviceSmfTlsListenPort')
+        smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
+        value = smf_dict['ssl']['listen-port']
     return 'serviceSmfTlsListenPort', value
 
 
@@ -263,6 +386,12 @@ def _get_virtualRouterName(search_dict):
 #
 # field func helpers
 #
+
+def _get_broker_service_dict(search_dict, field, value):
+    service_dict = _find_nested_dict(search_dict, field, value)
+    if service_dict is None:
+        raise AnsibleError("Could not find '{}={}' in search_dict in broker service ansible_facts. Pls raise an issue.".format(field, value))
+    return service_dict
 
 
 def _get_sc_messaging_protocols_dict(search_dict):
