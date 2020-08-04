@@ -1,9 +1,14 @@
 # Setup Development Environment
 
-* Clone the project.
 * Set up ansible environment to point to the project:
 
 ````bash
+
+vi set-ansible-env.sh
+# edit python path
+export ANSIBLE_PYTHON_INTERPRETER=/usr/local/bin/python
+
+# set the env
 source set-ansible-env.sh
 ````
 
