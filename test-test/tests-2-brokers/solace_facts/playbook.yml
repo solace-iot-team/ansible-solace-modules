@@ -81,6 +81,24 @@
       debug:
         msg: "msg vpns={{ ansible_facts.solace.about.user.msgVpns }}"
 
+    - name: "Get Host SMF Messaging Endpoints Facts: local"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: local
+        fields:
+        field_funcs:
+          - get_serviceSMFMessagingEndpoints
+      register: local_smf_enpoints_facts
+
+    - name: "Get Host SMF Messaging Endpoints Facts: solace-cloud-1"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: solace-cloud-1
+        fields:
+        field_funcs:
+          - get_serviceSMFMessagingEndpoints
+      register: solace_cloud_1_smf_enpoints_facts
+
     - name: "Get Host Service Facts: local"
       solace_get_facts:
         hostvars: "{{ hostvars }}"
@@ -109,8 +127,10 @@
         msg:
           - "local_service_facts:"
           - "{{ local_service_facts }}"
+          - "{{ local_smf_enpoints_facts }}"
           - "solace_cloud_1_service_facts:"
           - "{{ solace_cloud_1_service_facts }}"
+          - "{{ solace_cloud_1_smf_enpoints_facts }}"
 
 ###
 # The End.

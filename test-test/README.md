@@ -1,6 +1,8 @@
 # Tests
 
-## Run all Tests
+Run all tests.
+
+## Pre-requisites
 
 Brokers:
 - 1 cloud instance
@@ -19,7 +21,19 @@ vi cloud.broker.inventory.json
 
 ````
 
-### Run Tests
+### Set the Ansible Python Interpreter
+
+Required Python version: >= 3.6
+
+````bash
+export ANSIBLE_PYTHON_INTERPRETER={path to python}
+
+# example:
+export ANSIBLE_PYTHON_INTERPRETER=/usr/local/bin/python
+
+````
+
+## Run Tests
 
 ````bash
 ./run.sh

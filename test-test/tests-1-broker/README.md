@@ -1,6 +1,12 @@
-# Tests against 1 Broker
+# Tests: 1 Broker
 
-## Run all tests against a single broker
+## Pre-requisites
+
+[See ../README](../README)
+
+## Run Tests
+
+Run tests interactively.
 
 ````bash
 # adjust interactive tests
@@ -10,16 +16,20 @@ vi ./run.sh
 ./run.sh
 ````
 
-## Run single test
+## Run Single Test
 
 ````bash
+# start & stop a local broker
+cd {ansible-solace-home}/test-test
 
-cd {test-dir}
+./start.local.broker.sh
 
-./run.sh
+./stop.local.broker.sh
 
 ````
 
+````bash
+cd <test-directory>
 
----
-The End.
+./run.sh
+````

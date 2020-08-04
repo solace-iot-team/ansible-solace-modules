@@ -23,22 +23,35 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
+SCRIPT_NAME=$(basename $(test -L "$0" && readlink "$0" || echo "$0"));
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-source $SCRIPT_PATH/lib/functions.sh
+if [[ $# != 1 ]]; then echo "Usage: '$SCRIPT_PATH/$SCRIPT_NAME {brokerDockerImage}'"; exit 1; fi
+export brokerDockerImage=$1
 
-brokerDockerImagesFile="$SCRIPT_PATH/lib/brokerDockerImages.json"
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
-
-brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImagesFile")
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-export brokerDockerImage
 export brokerDockerContainerName="pubSubStandardSingleNode"
+dockerComposeYmlFile="$SCRIPT_PATH/PubSubStandard_singleNode.yml"
 
-$SCRIPT_PATH/lib/_start.local.broker.sh $brokerDockerImage
+echo; echo "##############################################################################################################"
+echo "creating container: $brokerDockerContainerName"
+echo "image: $brokerDockerImage"
+echo
+
+# remove container first
+docker rm -f "$brokerDockerContainerName" > /dev/null 2>&1
+if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
+  # make sure we are pulling the latest
+  docker rmi -f $brokerDockerImageLatest > /dev/null 2>&1
+fi
+# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+
+docker-compose -f $dockerComposeYmlFile up -d
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+
+echo
+
+docker ps -a
+
+echo; echo "Done."; echo
 
 ###
 # The End.

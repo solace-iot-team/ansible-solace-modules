@@ -23,6 +23,50 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
+function getCloudBrokerInventoryMeta() {
+  if [[ $# -lt 2 ]]; then
+      echo "Usage: metaJson='\$(getCloudBrokerInventoryMeta {full-path/inventory.json})'" 1>&2
+      return 1
+  fi
+  local inventoryFile="$1"
+  meta=$(cat $inventoryFile | jq -r ".[].hosts[].meta")
+  echo $meta
+  return 0
+}
+
+function chooseFromArray() {
+  if [[ $# -lt 2 ]]; then
+      echo "Usage: userChoice='\$(chooseFromArray descr list-of-choices)'" 1>&2
+      return 1
+  fi
+  local descr="$1"
+  shift
+  local choices=("$@")
+
+  let num=${#choices[@]}-1
+  if [ $num -lt 1 ]; then echo ">>> ERR-chooseFromArray(): no choices for '$descr' found." 1>&2; exit 1; fi
+
+  echo 1>&2
+  echo "Choose a $descr: " 1>&2
+  echo 1>&2
+
+  for i in "${!choices[@]}"; do
+    echo "($i): ${choices[$i]}" 1>&2
+  done
+
+  echo 1>&2
+
+  read -p "Enter 0-$num: " choice
+
+  if [[ ! "$choice" =~ ^[0-9]+$ ]] || [ ! "$choice" -ge 0 ] || [ ! "$choice" -le "$num" ]; then
+    echo "Choose 0-$num, your choice:'$choice' is not valid" 1>&2
+    return 1
+  fi
+
+  echo ${choices[$choice]}
+  return 0
+
+}
 
 function showEnv() {
   echo > /dev/tty
@@ -61,8 +105,6 @@ function chooseTestRunnerEnv() {
     "dev"
     "package"
   )
-  #if [ ! -z ${testRunnerEnv+x} ]; then
-  # catches empty as well
   if [ ! -z "$testRunnerEnv" ]; then
     let found=-1
     for i in "${!envs[@]}"; do
@@ -88,13 +130,12 @@ function chooseTestRunnerEnv() {
 
 function chooseBrokerDockerImage() {
   if [[ $# != 1 ]]; then
-      echo "Usage: brokerDockerImage='\$(chooseBrokerDockerImage images-json)'" 1>&2
+      echo "Usage: brokerDockerImage='\$(chooseBrokerDockerImage images-json-file)'" 1>&2
       return 1
   fi
-  # brokerDockerImagesFile=$1
-  # brokerDockerImagesJSON=$(cat $brokerDockerImagesFile | jq -r '.brokerDockerImages' )
-  # brokerDockerImagesArray=($(echo $brokerDockerImagesJSON | jq -r '.[]'))
-  brokerDockerImagesArray=($(echo $1 | jq -r '.[]'))
+  brokerDockerImagesFile=$1
+  brokerDockerImagesJSON=$(cat $brokerDockerImagesFile | jq -r '.brokerDockerImages' )
+  brokerDockerImagesArray=($(echo $brokerDockerImagesJSON | jq -r '.[]'))
   # echo "brokerDockerImagesArray=${brokerDockerImagesArray[@]}" 1>&2
   # echo "brokerDockerImagesArray.length=${#brokerDockerImagesArray[@]}" 1>&2
 

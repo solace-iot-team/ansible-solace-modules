@@ -35,60 +35,74 @@ source ./_run.env.sh
 # select here or interactively
   export AS_TEST_RUNNER_ENV="dev"
   #export AS_TEST_RUNNER_ENV="package"
-
 source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
-# customize
-  # export ANSIBLE_SOLACE_ENABLE_LOGGING=false
+##############################################################################################################################
+# Settings
+
+  export ANSIBLE_SOLACE_ENABLE_LOGGING=false
   # export ANSIBLE_SOLACE_ENABLE_LOGGING=true
 
+  ansibleSolaceTests=(
+    "solace_rdp"
+    "solace_queue"
+    "solace_mqtt_session"
+    "solace_get_queues"
+    "solace_get_client_usernames"
+    "solace_get_client_profiles"
+    "solace_acl_profile"
+    "solace_client_profile"
+  )
+
+  brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
+  localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
+  cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+
+brokerChoices=(
+  "local-broker"
+  "cloud-broker"
+)
+brokerChoice=$(chooseFromArray "broker" "${brokerChoices[@]}")
+if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+if [[ $brokerChoice == "local-broker" ]]; then
+  brokerInventoryFile=$localBrokerInventoryFile
+  brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImagesFile")
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+else
+  brokerInventoryFile=$cloudBrokerInventoryFile
+fi
+
 x=$(showEnv)
+echo "brokerInventoryFile=$brokerInventoryFile"
+echo "brokerDockerImage=$brokerDockerImage"
+echo
 x=$(wait4Key)
 
 ##############################################################################################################################
-# Configure
-
-brokerInventoryFiles=(
-  "$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-  "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
-)
-
-ansibleSolaceTests=(
-  "solace_rdp"
-  "solace_queue"
-  "solace_mqtt_session"
-  "solace_get_queues"
-  "solace_get_client_usernames"
-  "solace_get_client_profiles"
-  "solace_acl_profile"
-  "solace_client_profile"
-)
-
-##############################################################################################################################
 # prepare
-
-for brokerInventoryFile in ${brokerInventoryFiles[@]}; do
-  $AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $brokerInventoryFile
+if [ ! -z "$brokerDockerImage" ]; then
+  $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-done
+fi
+
+$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $brokerInventoryFile
+if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 ##############################################################################################################################
 # run tests against broker
 
-for brokerInventoryFile in ${brokerInventoryFiles[@]}; do
-  for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
+for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
 
-    runScript="$AS_TEST_SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $brokerInventoryFile"
+  runScript="$AS_TEST_SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $brokerInventoryFile"
 
-    echo; echo "##############################################################################################################"
-    echo "# test: $ansibleSolaceTest"
-    echo "# calling: $runScript"
+  echo; echo "##############################################################################################################"
+  echo "# test: $ansibleSolaceTest"
+  echo "# calling: $runScript"
 
-    $runScript
+  $runScript
 
-    if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
 
-  done
 done
 
 echo;

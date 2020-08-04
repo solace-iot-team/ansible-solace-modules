@@ -38,30 +38,39 @@ source ./_run.env.sh
 
 source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
-# customize
-  # export ANSIBLE_SOLACE_ENABLE_LOGGING=false
+##############################################################################################################################
+# Settings
+
+  export ANSIBLE_SOLACE_ENABLE_LOGGING=false
   # export ANSIBLE_SOLACE_ENABLE_LOGGING=true
 
-  export AS_TEST_BROKER_INVENTORY_1="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-  export AS_TEST_BROKER_INVENTORY_2="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+  ansibleSolaceTests=(
+    "solace_facts"
+  )
 
+  brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
+  localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
+  cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+
+  brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImagesFile")
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 x=$(showEnv)
+echo "localBrokerInventoryFile=$localBrokerInventoryFile"
+echo "cloudBrokerInventoryFile=$cloudBrokerInventoryFile"
+echo "brokerDockerImage=$brokerDockerImage"
+echo
 x=$(wait4Key)
-
-##############################################################################################################################
-# set test scripts
-
-ansibleSolaceTests=(
-  "solace_facts"
-)
 
 ##############################################################################################################################
 # prepare
 
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $AS_TEST_BROKER_INVENTORY_1
+$AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $AS_TEST_BROKER_INVENTORY_2
+
+$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $localBrokerInventoryFile
+if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $cloudBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 ##############################################################################################################################
@@ -69,7 +78,7 @@ if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
   for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
 
-    runScript="$AS_TEST_SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $AS_TEST_BROKER_INVENTORY_1 $AS_TEST_BROKER_INVENTORY_2"
+    runScript="$AS_TEST_SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $localBrokerInventoryFile $cloudBrokerInventoryFile"
 
     echo; echo "##############################################################################################################"
     echo "# test: $ansibleSolaceTest"

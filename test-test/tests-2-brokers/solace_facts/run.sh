@@ -43,10 +43,10 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
     # logging
     export ANSIBLE_SOLACE_ENABLE_LOGGING=true
     # select inventory
-    export AS_TEST_BROKER_INVENTORY_1="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-    export AS_TEST_BROKER_INVENTORY_2="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+    localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
+    cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
     # select broker(s) inside inventory
-    export AS_TEST_BROKERS="all"
+    export brokers="all"
     # playbook
     playbooks=(
       "./exceptions.1.playbook.yml"
@@ -68,9 +68,9 @@ ANSIBLE_SOLACE_LOG_FILE="$AS_TEST_SCRIPT_PATH/ansible-solace.log"
 rm -f $ANSIBLE_SOLACE_LOG_FILE
 rm -f hostvars*.json
 
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $AS_TEST_BROKER_INVENTORY_1
+$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $localBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $AS_TEST_BROKER_INVENTORY_2
+$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $cloudBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 ##############################################################################################################################
@@ -79,10 +79,10 @@ if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 for playbook in ${playbooks[@]}; do
 
   ansible-playbook \
-                    -i $AS_TEST_BROKER_INVENTORY_1 \
-                    -i $AS_TEST_BROKER_INVENTORY_2 \
+                    -i $localBrokerInventoryFile \
+                    -i $cloudBrokerInventoryFile \
                     $playbook \
-                    --extra-vars "brokers=$AS_TEST_BROKERS" \
+                    --extra-vars "brokers=$brokers" \
                     -vvv
 
   if [[ $? != 0 ]]; then
