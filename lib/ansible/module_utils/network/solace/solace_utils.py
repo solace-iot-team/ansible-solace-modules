@@ -39,16 +39,6 @@ from distutils.util import strtobool
 from ansible.errors import AnsibleError
 import sys
 
-# check python version
-version_info = sys.version_info
-assert version_info.major == 3
-assert version_info.minor >= 6
-
-# print("Version info.")
-# print (sys.version_info)
-#
-#  sys.version_info(major=3, minor=8, micro=5, releaselevel='final', serial=0)
-
 try:
     import requests
     HAS_REQUESTS = True
@@ -64,9 +54,11 @@ except ImportError:
 
 
 """ Exception Messages """
-EX_MSG_HINT_1 = "Install module. Possible issue: set ANSIBLE_PYTHON_INTERPRETER={path-to-pyton}."
-EX_MSG_MISSING_REQUESTS_MODULE = "Missing 'requests' module. " + EX_MSG_HINT_1
-EX_MSG_MISSING_XML2DICT_MODULE = "Missing 'xml2dict' module. " + EX_MSG_HINT_1
+EX_MSG_HINT_1 = "Install module. "
+EX_MSG_HINT_2 = "Possible solution: Set ANSIBLE_PYTHON_INTERPRETER={path-to-pyton}."
+EX_MSG_MISSING_REQUESTS_MODULE = "Missing 'requests' module. " + EX_MSG_HINT_1 + EX_MSG_HINT_2
+EX_MSG_MISSING_XML2DICT_MODULE = "Missing 'xml2dict' module. " + EX_MSG_HINT_1 + EX_MSG_HINT_2
+EX_MSG_UNSUPPORTED_PYTHON_VERSION = "Unsupported python version: "
 EX_RESULT = dict(
     rc=2
 )
@@ -160,7 +152,7 @@ class SolaceTask:
     def __init__(self, module):
         self.module = module
 
-        self._check_imports()
+        self._check_imports_version()
 
         solace_cloud_api_token = self.module.params.get('solace_cloud_api_token', None)
         solace_cloud_service_id = self.module.params.get('solace_cloud_service_id', None)
@@ -192,11 +184,16 @@ class SolaceTask:
         )
         return
 
-    def _check_imports(self):
+    def _check_imports_version(self):
         if not HAS_REQUESTS:
             self.module.fail_json(msg=EX_MSG_MISSING_REQUESTS_MODULE, **EX_RESULT, exception=REQUESTS_IMP_ERR)
         if not HAS_XML2DICT:
             self.module.fail_json(msg=EX_MSG_MISSING_XML2DICT_MODULE, **EX_RESULT, exception=XML2DICT_IMP_ERR)
+        # check python version
+        version_info = sys.version_info
+        if version_info.major != 3 or version_info.minor < 6:
+            msg = [EX_MSG_UNSUPPORTED_PYTHON_VERSION, str(version_info), EX_MSG_HINT_2]
+            self.module.fail_json(msg=msg, **EX_RESULT)
 
     def do_task(self):
 
