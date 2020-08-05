@@ -26,7 +26,6 @@
 clear
 echo; echo "##############################################################################################################"
 echo
-
 source ./_run.env.sh
 
 ##############################################################################################################################
@@ -83,15 +82,13 @@ for playbook in ${playbooks[@]}; do
                     -i $cloudBrokerInventoryFile \
                     $playbook \
                     --extra-vars "brokers=$brokers" \
-                    -vvv
+                    #-vvv
 
   if [[ $? != 0 ]]; then
 
-    echo "ERROR";
-    echo; echo "Show the log?"
-    echo; read -p 'Enter to continue, Ctrl-c to abort: ' continue; echo; echo
-
-    less $ANSIBLE_SOLACE_LOG_FILE
+    echo ">>> ERROR";
+    echo; echo "log: $ANSIBLE_SOLACE_LOG_FILE"
+    echo
 
   fi
 
