@@ -28,8 +28,6 @@
   hosts: "{{ brokers }}"
   gather_facts: no
   any_errors_fatal: true
-  # vars:
-  #   protocol: "{{ 'https' if sempv2_is_secure_connection else 'http' }}"
   module_defaults:
     solace_get_available:
       host: "{{ sempv2_host }}"
@@ -44,9 +42,15 @@
     - name: Pause Until Broker/Service available
       solace_get_available:
       register: _result
-      until: _result.rc == 0 or _result.rc == 2
+      until: _result.rc != -1
       retries: 25 # 25 * 5 seconds
       delay: 5 # Every 5 seconds
+
+    # - debug:
+    #     msg:
+    #       - "exception: "
+    #       - " {{ _result }}"
+    #   when: _result.rc != -1
 
 ###
 # The End.

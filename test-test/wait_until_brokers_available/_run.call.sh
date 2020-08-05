@@ -44,6 +44,7 @@ BROKERS="all"
 ansible-playbook -i $BROKERS_INVENTORY \
                   $PLAYBOOK \
                   --extra-vars "brokers=$BROKERS" \
+                  -vvv
 
 ###
 # The End.

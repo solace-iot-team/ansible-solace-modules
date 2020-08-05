@@ -49,7 +49,7 @@ short_description: Check if broker/service is reachable and responsive.
 
 description: >
   Check if broker/service is reachable and responsive.
-  Calls "GET /about" and sets "rc=0" if up, "rc=1" if not.
+  Calls "GET /about" and sets "rc=0" if reachable, "rc=-1" if not.
 
 extends_documentation_fragment:
 - solace.broker
@@ -78,7 +78,7 @@ EXAMPLES = '''
     - name: Pause Until Broker/Service available
       solace_get_available:
       register: _result
-      until: _result.rc == 0 or _result.rc == 2
+      until: _result.rc != -1
       retries: 25 # 25 * 5 seconds
       delay: 5 # Every 5 seconds
 '''
@@ -88,7 +88,7 @@ rc:
     description: Return code.
     type: int
     rc = 0 : broker / service is reachable
-    rc = 1 : broker / service is not reachable
+    rc = -1 : broker / service is not reachable
 
 '''
 
@@ -152,7 +152,7 @@ def run_module():
     solace_task = SolaceGetAvailableTask(module)
     ok, resp = solace_task.get_available()
     if not ok:
-        result['rc'] = 1
+        result['rc'] = -1
         module.fail_json(msg=resp, **result)
 
     module.exit_json(**result)
