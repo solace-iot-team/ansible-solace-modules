@@ -37,6 +37,17 @@ import time
 import os
 from distutils.util import strtobool
 from ansible.errors import AnsibleError
+import sys
+
+# check python version
+version_info = sys.version_info
+assert version_info.major == 3
+assert version_info.minor >= 6
+
+# print("Version info.")
+# print (sys.version_info)
+#
+#  sys.version_info(major=3, minor=8, micro=5, releaselevel='final', serial=0)
 
 try:
     import requests
@@ -44,13 +55,21 @@ try:
 except ImportError:
     REQUESTS_IMP_ERR = traceback.format_exc()
     HAS_REQUESTS = False
-
 try:
     import xmltodict
     HAS_XML2DICT = True
 except ImportError:
     XML2DICT_IMP_ERR = traceback.format_exc()
     HAS_XML2DICT = False
+
+
+""" Exception Messages """
+EX_MSG_HINT_1 = "Install module. Possible issue: set ANSIBLE_PYTHON_INTERPRETER={path-to-pyton}."
+EX_MSG_MISSING_REQUESTS_MODULE = "Missing 'requests' module. " + EX_MSG_HINT_1
+EX_MSG_MISSING_XML2DICT_MODULE = "Missing 'xml2dict' module. " + EX_MSG_HINT_1
+EX_RESULT = dict(
+    rc=2
+)
 
 
 """ Default Whitelist Keys """
@@ -175,9 +194,9 @@ class SolaceTask:
 
     def _check_imports(self):
         if not HAS_REQUESTS:
-            self.module.fail_json(msg="Missing 'requests' module. Install first.", exception=REQUESTS_IMP_ERR)
+            self.module.fail_json(msg=EX_MSG_MISSING_REQUESTS_MODULE, **EX_RESULT, exception=REQUESTS_IMP_ERR)
         if not HAS_XML2DICT:
-            self.module.fail_json(msg="Missing 'xml2dict' module. Install first", exception=XML2DICT_IMP_ERR)
+            self.module.fail_json(msg=EX_MSG_MISSING_XML2DICT_MODULE, **EX_RESULT, exception=XML2DICT_IMP_ERR)
 
     def do_task(self):
 

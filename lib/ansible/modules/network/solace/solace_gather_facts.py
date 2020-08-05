@@ -32,10 +32,20 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 
 import ansible.module_utils.network.solace.solace_utils as su
 from ansible.module_utils.basic import AnsibleModule
-import requests
 from ansible.errors import AnsibleError
-import xmltodict
-
+import traceback
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    REQUESTS_IMP_ERR = traceback.format_exc()
+    HAS_REQUESTS = False
+try:
+    import xmltodict
+    HAS_XML2DICT = True
+except ImportError:
+    XML2DICT_IMP_ERR = traceback.format_exc()
+    HAS_XML2DICT = False
 
 DOCUMENTATION = '''
 ---
@@ -134,6 +144,13 @@ class SolaceGatherFactsTask(su.SolaceTask):
 
     def __init__(self, module):
         su.SolaceTask.__init__(self, module)
+        self._module_check_imports()
+
+    def _module_check_imports(self):
+        if not HAS_REQUESTS:
+            self.module.fail_json(msg=su.EX_MSG_MISSING_REQUESTS_MODULE, **su.EX_RESULT, exception=REQUESTS_IMP_ERR)
+        if not HAS_XML2DICT:
+            self.module.fail_json(msg=su.EX_MSG_MISSING_XML2DICT_MODULE, **su.EX_RESULT, exception=XML2DICT_IMP_ERR)
 
     def _get_about_info(self):
         # GET /about, /about/api, /about/user, /about/user/msgVpns
