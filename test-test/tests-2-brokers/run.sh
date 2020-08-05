@@ -45,6 +45,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
   # export ANSIBLE_SOLACE_ENABLE_LOGGING=true
 
   ansibleSolaceTests=(
+    "solace_bridges"
     "solace_facts"
   )
 
