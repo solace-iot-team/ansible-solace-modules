@@ -519,6 +519,21 @@ def _type_conversion(d):
     return d
 
 
+def _handle_get_configuration_not_found_errors(resp):
+    # Solace Cloud can return:
+    # "error": {
+    #   "code": 6,
+    #   "description": "Problem with tlsCipherSuiteList: Could not retrieve information from management-plane: not found",
+    #   "status": "NOT_FOUND"
+    # },
+    error = resp['error']
+    code = error['code']
+    description = error['description']
+    if code == 6 and description.find("Problem with tlsCipherSuiteList") >= 0:
+        return False, resp
+    return True, dict()
+
+
 def get_configuration(solace_config, path_array, key):
     ok, resp = make_get_request(solace_config, path_array)
     if ok:
@@ -538,7 +553,7 @@ def get_configuration(solace_config, path_array, key):
                 and 'error' in resp.keys()
                 and 'code' in resp['error'].keys()
                 and resp['error']['code'] == 6):
-            return True, dict()
+            return _handle_get_configuration_not_found_errors(resp)
 
     return False, resp
 
@@ -665,7 +680,7 @@ def _create_hint_bad_response(meta):
         if meta['error']['code'] == 89:
             meta['hint'] = [
                 "This might be a Solace Cloud service.",
-                "If so, check the module's documentation on how to provide solace cloud parameters:",
+                "If so, check the module's documentation on how to provide Solace Cloud parameters:",
                 "ansible-doc <module-name>"
             ]
     return meta

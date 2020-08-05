@@ -35,18 +35,34 @@ from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = '''
 ---
-module: solace_get_bridges
+module: solace_get_bridge_remote_vpns
 
 version_added: '2.9.11'
 
-short_description: Get a list of Bridge objects.
+short_description: Get a list of Bridge Remote VPN objects.
 
 description:
-- "Get a list of Bridge objects."
+- "Get a list of Bridge Remote VPN objects."
 
 notes:
-- "Reference Config: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/bridge/getMsgVpnBridges)."
-- "Reference Monitor: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/monitor/index.html#/bridge/getMsgVpnBridges)."
+- "Reference Config: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/bridge/getMsgVpnBridgeRemoteMsgVpns)."
+- "Reference Monitor: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/monitor/index.html#/bridge/getMsgVpnBridgeRemoteMsgVpns)."
+
+options:
+  bridge_name:
+    description: The bridge. Maps to 'bridgeName' in the API.
+    required: true
+    type: str
+  bridge_virtual_router:
+    description: The bridge virtual router. Maps to 'bridgeVirtualRouter' in the API.
+    required: false
+    type: str
+    default: auto
+    choices:
+      - primary
+      - backup
+      - auto
+    aliases: [virtual_router]
 
 extends_documentation_fragment:
 - solace.broker
@@ -54,7 +70,7 @@ extends_documentation_fragment:
 - solace.get_list
 
 seealso:
-- module: solace_bridge
+- module: solace_bridge_remote_vpn
 
 author:
   - Ricardo Gomez-Ulmke (ricardo.gomez-ulmke@solace.com)
@@ -64,24 +80,6 @@ EXAMPLES = '''
 
 # Config:
 
-  - name: Get List of all Bridges
-    solace_get_bridges:
-      msg_vpn: "{{ vpn }}"
-      query_params:
-        where:
-          - "bridgeName==*ansible*"
-        select:
-    register: pre_existing_bridges
-
-  - name: Print pre-existing Bridges
-    debug:
-      msg:
-        - "pre-exising bridges:"
-        - "{{ pre_existing_bridges.result_list }}"
-
-  - name: Print count of pre-existing Bridges
-    debug:
-      msg: "pre-existing bridges, count= {{ pre_existing_bridges.result_list_count }}"
 
 '''
 
@@ -93,32 +91,8 @@ result_list:
     type: list
     elements: complex
     sample: [
-        {
-            "bridgeName": "default_ansible-test",
-            "bridgeVirtualRouter": "auto",
-            "enabled": true,
-            "maxTtl": 8,
-            "msgVpnName": "ansible-test",
-            "remoteAuthenticationBasicClientUsername": "default",
-            "remoteAuthenticationScheme": "basic",
-            "remoteConnectionRetryCount": 0,
-            "remoteConnectionRetryDelay": 3,
-            "remoteDeliverToOnePriority": "p1",
-            "tlsCipherSuiteList": "default"
-        },
-        {
-            "bridgeName": "test_ansible_solace",
-            "bridgeVirtualRouter": "auto",
-            "enabled": false,
-            "maxTtl": 8,
-            "msgVpnName": "ansible-test",
-            "remoteAuthenticationBasicClientUsername": "test_ansible_solace",
-            "remoteAuthenticationScheme": "basic",
-            "remoteConnectionRetryCount": 0,
-            "remoteConnectionRetryDelay": 3,
-            "remoteDeliverToOnePriority": "p1",
-            "tlsCipherSuiteList": "default"
-        }
+
+
     ]
 
 Monitor API:
@@ -128,41 +102,9 @@ result_list:
     type: list
     elements: complex
     sample: [
-        {
-            "averageRxByteRate": 0,
-            "averageRxMsgRate": 0,
-            "averageTxByteRate": 0,
-            "averageTxMsgRate": 0,
-            "boundToQueue": true,
-            "bridgeName": "ansible-solace__test_bridge",
-            "bridgeVirtualRouter": "auto",
-            "clientName": "#bridge/remote/ansible-solace__test_bridge/v:ansible-solace__test/270/775",
-            "compressed": false,
-            "controlRxByteCount": 1193,
-            "controlRxMsgCount": 9,
-            "controlTxByteCount": 1268,
-            "controlTxMsgCount": 9,
-            "counter": {
-                "controlRxByteCount": 1193,
-                "controlRxMsgCount": 9,
-                "controlTxByteCount": 1268,
-                "controlTxMsgCount": 9,
-                "dataRxByteCount": 0,
-                "dataRxMsgCount": 0,
-                "dataTxByteCount": 0,
-                "dataTxMsgCount": 0,
-                "discardedRxMsgCount": 0,
-                "discardedTxMsgCount": 0,
-                "loginRxMsgCount": 1,
-                "loginTxMsgCount": 1,
-                "msgSpoolRxMsgCount": 0,
-                "rxByteCount": 1193,
-                "rxMsgCount": 9,
-                "txByteCount": 1268,
-                "txMsgCount": 9
-        }
-    ]
 
+
+    ]
 
 result_list_count:
     description: Number of items in result_list.
@@ -172,20 +114,29 @@ result_list_count:
 '''
 
 
-class SolaceGetBridgesTask(su.SolaceTask):
+class SolaceGetBridgeRemoteVpnsTask(su.SolaceTask):
 
     def __init__(self, module):
         su.SolaceTask.__init__(self, module)
 
+    def get_list_default_query_params(self):
+        return None
+
     def get_list(self):
-        # GET /msgVpns/{msgVpnName}/bridges
+        # GET /msgVpns/{msgVpnName}/bridges/{bridgeName},{bridgeVirtualRouter}/remoteMsgVpns
         vpn = self.module.params['msg_vpn']
-        path_array = [su.MSG_VPNS, vpn, su.BRIDGES]
+        bridge_name = self.module.params['bridge_name']
+        bridge_virtual_router = self.module.params['bridge_virtual_router']
+
+        bridge_uri = ','.join([bridge_name, bridge_virtual_router])
+        path_array = [su.MSG_VPNS, vpn, su.BRIDGES, bridge_uri, su.BRIDGES_REMOTE_MSG_VPNS]
         return self.execute_get_list(path_array)
 
 
 def run_module():
     module_args = dict(
+        bridge_name=dict(type='str', required=True),
+        bridge_virtual_router=dict(type='str', default='auto', choices=['primary', 'backup', 'auto'], aliases=['virtual_router']),
     )
     arg_spec = su.arg_spec_broker()
     arg_spec.update(su.arg_spec_vpn())
@@ -202,7 +153,7 @@ def run_module():
         changed=False
     )
 
-    solace_task = SolaceGetBridgesTask(module)
+    solace_task = SolaceGetBridgeRemoteVpnsTask(module)
     ok, resp_or_list = solace_task.get_list()
     if not ok:
         module.fail_json(msg=resp_or_list, **result)

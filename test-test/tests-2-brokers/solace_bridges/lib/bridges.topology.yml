@@ -1,0 +1,25 @@
+---
+  bridges:
+    ansible-solace__test_bridge:
+      # Notes:
+      # - the hosts and remote_hosts
+      #   must be the same name as in the main inventory
+      # - bridges always come in pairs and reference each other
+      local:
+        remote_host: solace-cloud-1
+        remote_vpn: ansible-test
+      solace-cloud-1:
+        remote_host: local
+        remote_vpn: default
+
+    another_bridge:
+      host_3:
+        remote_host: host_4
+        remote_vpn: vpn-name
+      host_4:
+        remote_host: host_3
+        remote_vpn: vpn-name
+
+
+###
+# The End.

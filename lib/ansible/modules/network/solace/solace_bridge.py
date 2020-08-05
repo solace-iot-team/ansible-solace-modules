@@ -56,7 +56,7 @@ options:
     description: The virtual router.
     required: false
     type: str
-    default: primary
+    default: auto
     choices:
       - primary
       - backup
@@ -100,7 +100,6 @@ EXAMPLES = '''
       virtual_router: "{{ virtual_router }}"
       settings:
         enabled: true
-    register: testout
 
 '''
 
@@ -143,7 +142,7 @@ class SolaceBridgeTask(su.SolaceTask):
             'bridgeVirtualRouter': virtual_router
         }
         mandatory = {
-            'bridgeName': bridge_name
+            self.LOOKUP_ITEM_KEY: bridge_name
         }
         data = su.merge_dicts(defaults, mandatory, settings)
         path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.BRIDGES]
