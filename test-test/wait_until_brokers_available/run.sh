@@ -42,11 +42,16 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
   # SELECT
     # logging
     export ANSIBLE_SOLACE_ENABLE_LOGGING=true
+    # images
+    brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
     # select inventory
-    export AS_TEST_BROKER_INVENTORY="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-    # export AS_TEST_BROKER_INVENTORY="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+    localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
+    cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
     # select broker(s) inside inventory
-    export AS_TEST_BROKERS="all"
+    export brokers="all"
+    # playbook
+    playbook="./playbook.yml"
+
   # END SELECT
 
 
@@ -59,28 +64,24 @@ x=$(wait4Key)
 ANSIBLE_SOLACE_LOG_FILE="$AS_TEST_SCRIPT_PATH/ansible-solace.log"
 rm -f $ANSIBLE_SOLACE_LOG_FILE
 
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $AS_TEST_BROKER_INVENTORY
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
 ##############################################################################################################################
 # Run
+brokerDockerImages=$(cat $brokerDockerImagesFile | jq -r ".brokerDockerImages[]")
+for brokerDockerImage in ${brokerDockerImages[@]}; do
 
-playbook="./playbook.yml"
+  $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-# --step --check -vvv
-ansible-playbook -i $AS_TEST_BROKER_INVENTORY \
-                  $playbook \
-                  --extra-vars "brokers=$AS_TEST_BROKERS" \
-                  -vvv
-if [[ $? != 0 ]]; then
+  ansible-playbook \
+                    -i $localBrokerInventoryFile \
+                    -i $cloudBrokerInventoryFile \
+                    $playbook \
+                    --extra-vars "brokers=$brokers" \
+                    -vvv
 
-  echo "ERROR";
-  echo; echo "Show the log?"
-  echo; read -p 'Enter to continue, Ctrl-c to abort: ' continue; echo; echo
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-  less $ANSIBLE_SOLACE_LOG_FILE
-
-fi
+done
 
 ###
 # The End.
