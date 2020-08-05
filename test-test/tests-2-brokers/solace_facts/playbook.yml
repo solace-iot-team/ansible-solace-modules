@@ -132,5 +132,32 @@
           - "{{ solace_cloud_1_service_facts }}"
           - "{{ solace_cloud_1_smf_enpoints_facts }}"
 
+    - name: "Get Host Bridge Facts: local"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: local
+        fields:
+        field_funcs:
+          - get_bridge_remoteMsgVpnLocations
+      register: local_bridge
+
+    - name: "Get Host Bridge Facts: solace-cloud-1"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: solace-cloud-1
+        fields:
+        field_funcs:
+          - get_bridge_remoteMsgVpnLocations
+      register: solace_cloud_1_bridge
+
+    - name: Print Host Bridge Facts
+      debug:
+        msg:
+          - "remote host bridge facts: local"
+          - "{{ local_bridge.facts }}"
+          - "remote host bridge facts: solace-cloud-1"
+          - "{{ solace_cloud_1_bridge.facts }}"
+
+
 ###
 # The End.

@@ -76,6 +76,13 @@ options:
       - get_serviceSmfTlsListenPort
       - get_virtualRouterName
       - get_serviceSMFMessagingEndpoints
+      - get_bridge_remoteMsgVpnLocations
+    functions:
+      get_bridge_remoteMsgVpnLocations:
+        description:
+            - "Retrieve remote message vpn locations (plain, secured, compressed) for the service/broker."
+            - "For Solace Cloud: {hostname}:{port}."
+            - "For broker: v:{virtualRouterName}."
 
 seealso:
 - module: solace_gather_facts
@@ -137,13 +144,13 @@ facts:
     type: dict
     returned: on success
     elements: complex
-    sample:
+    samples:
 
         "facts": {
             "serviceSmfCompressionListenPort": 55003,
             "serviceSmfPlainTextListenPort": 55555,
             "serviceSmfTlsListenPort": 55443,
-            "virtualRouterName": "single-aws-eu-west-5e-4yyftdf"
+            "virtualRouterName": "single-aws-eu-west-6e-4ftdf"
         }
 
         "facts": {
@@ -238,6 +245,8 @@ class SolaceGetFactsTask():
                         field, value = _get_virtualRouterName(search_object)
                     elif field_func == 'get_serviceSMFMessagingEndpoints':
                         field, value = _get_serviceSMFMessagingEndpoints(search_object)
+                    elif field_func == 'get_bridge_remoteMsgVpnLocations':
+                        field, value = _get_bridge_remoteMsgVpnLocations(search_object)
                     else:
                         fail_reason = "Unknown field_func: '{}'. Pls check the documentation for supported field functions: 'ansible-doc solace_get_facts'.".format(field_func)
                         return False, fail_reason
@@ -261,6 +270,30 @@ class SolaceGetFactsTask():
 #
 # field funcs
 #
+
+
+def _get_bridge_remoteMsgVpnLocations(search_dict):
+    locs = dict(
+        plain=None,
+        compressed=None,
+        secured=None
+    )
+    if search_dict['isSolaceCloud']:
+        f, smfMessagingEndpoints = _get_serviceSMFMessagingEndpoints(search_dict)
+        locs['plain'] = (smfMessagingEndpoints['SMF']['SMF']['uriComponents']['host']
+                         + ":" + str(smfMessagingEndpoints['SMF']['SMF']['uriComponents']['port']))
+        locs['compressed'] = (smfMessagingEndpoints['SMF']['CompressedSMF']['uriComponents']['host']
+                              + ":" + str(smfMessagingEndpoints['SMF']['CompressedSMF']['uriComponents']['port']))
+        locs['secured'] = (smfMessagingEndpoints['SMF']['SecuredSMF']['uriComponents']['host']
+                           + ":" + str(smfMessagingEndpoints['SMF']['SecuredSMF']['uriComponents']['port']))
+    else:
+        f, virtual_router = _get_virtualRouterName(search_dict)
+        loc = "v:" + virtual_router
+        locs['plain'] = loc
+        locs['compressed'] = loc
+        locs['secured'] = loc
+
+    return 'bridge_remoteMsgVpnLocations', locs
 
 
 def _get_serviceSMFMessagingEndpoints(search_dict):
@@ -293,17 +326,17 @@ def _get_serviceSMFMessagingEndpoints(search_dict):
         cmp_smf_host = t.hostname
     else:
         # smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
-        smf_protocol = 'n/a'
-        smf_host = 'n/a'
-        smf_uri = 'n/a'
+        smf_protocol = None
+        smf_host = None
+        smf_uri = None
 
-        sec_smf_protocol = 'n/a'
-        sec_smf_host = 'n/a'
-        sec_smf_uri = 'n/a'
+        sec_smf_protocol = None
+        sec_smf_host = None
+        sec_smf_uri = None
 
-        cmp_smf_protocol = 'n/a'
-        cmp_smf_host = 'n/a'
-        cmp_smf_uri = 'n/a'
+        cmp_smf_protocol = None
+        cmp_smf_host = None
+        cmp_smf_uri = None
 
     f, smf_port = _get_serviceSmfPlainTextListenPort(search_dict)
     f, sec_smf_port = _get_serviceSmfTlsListenPort(search_dict)
