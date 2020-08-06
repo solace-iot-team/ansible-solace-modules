@@ -73,6 +73,7 @@ for brokerDockerImage in ${brokerDockerImages[@]}; do
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
   ansible-playbook \
+                    --forks 1 \
                     -i $localBrokerInventoryFile \
                     -i $cloudBrokerInventoryFile \
                     $playbook \

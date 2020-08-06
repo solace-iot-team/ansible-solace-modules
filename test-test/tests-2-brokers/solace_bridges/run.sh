@@ -74,6 +74,7 @@ if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 for playbook in ${playbooks[@]}; do
 
   ansible-playbook \
+                    --forks 1 \
                     -i $localBrokerInventoryFile \
                     -i $cloudBrokerInventoryFile \
                     $playbook \
