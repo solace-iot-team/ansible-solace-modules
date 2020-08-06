@@ -34,12 +34,19 @@
 
 # unset all vars first
 # save python interpreter
+if [ -z "${ANSIBLE_PYTHON_INTERPRETER-unset}" ]; then
+    echo ">>> ERR: env var: ANSIBLE_PYTHON_INTERPRETER is set to the empty string. Either unset or set properly."; echo
+    exit 1
+fi
 ansiblePythonInterpreter=$ANSIBLE_PYTHON_INTERPRETER
 envVars=$(env | cut -d= -f1 | grep ANSIBLE)
 for envVar in ${envVars[@]}; do
   unset $envVar
 done
-export ANSIBLE_PYTHON_INTERPRETER=$ansiblePythonInterpreter
+if [ ! -z "$ansiblePythonInterpreter" ]; then
+    #echo "ansiblePythonInterpreter=$ansiblePythonInterpreter is not empty"; echo;
+    export ANSIBLE_PYTHON_INTERPRETER=$ansiblePythonInterpreter
+fi
 
 # test jq is installed
 res=$(jq --version)
