@@ -48,6 +48,9 @@ description: >
   Provides convenience functions to access solace facts from 'ansible_facts.solace'.
   Call M(solace_gather_facts) first.
 
+notes:
+- In order to access other hosts' (other than the current 'inventory_host') facts, you must not use the 'serial' strategy for the playbook.
+
 options:
   hostvars:
     description: The playbook's 'hostvars'.

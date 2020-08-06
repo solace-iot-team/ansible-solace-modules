@@ -60,6 +60,7 @@ description: >
   Retrieves: service/broker info, about info, virtual router name, messaging endpoints, etc.
 
 notes:
+- In order to access other hosts' (other than the current 'inventory_host') facts, you must not use the 'serial' strategy for the playbook.
 - "Reference about: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/about)."
 - "Reference broker: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/all/getBroker)."
 - "Reference Solace Cloud: U(https://docs.solace.com/Solace-Cloud/ght_use_rest_api_services.htm) - Get Service / Connections Details."
