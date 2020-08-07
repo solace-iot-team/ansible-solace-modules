@@ -39,6 +39,7 @@ for runCallDir in ${runCallDirs[@]}; do
   runScript="$SCRIPT_PATH/$runCallDir/_run.call.sh"
 
   echo; echo "##############################################################################################################"
+  echo "# script: $SCRIPT_PATH"
   echo "# Running Tests: $runCallDir"
   echo "# calling: $runScript"
 
