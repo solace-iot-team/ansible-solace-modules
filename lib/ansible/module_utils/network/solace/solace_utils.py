@@ -52,7 +52,7 @@ _PY3_MIN = sys.version_info[:2] >= (3, 6)
 if not _PY3_MIN:
     print(
         '\n{"failed": true, '
-        '"msg": "failed: ansible-solace requires a minimum of Python3 version 3.6. Current version: %s"}' % (''.join(sys.version.splitlines()))
+        '"msg": "failed: ansible-solace requires a minimum of Python3 version 3.6. Current version: %s. Hint: set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3"}' % (''.join(sys.version.splitlines()))
     )
     sys.exit(1)
 
