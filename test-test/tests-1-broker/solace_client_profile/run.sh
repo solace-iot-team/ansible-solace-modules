@@ -66,7 +66,7 @@ x=$(wait4Key)
 ANSIBLE_SOLACE_LOG_FILE="$AS_TEST_SCRIPT_PATH/ansible-solace.log"
 rm -f $ANSIBLE_SOLACE_LOG_FILE
 
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $AS_TEST_BROKER_INVENTORY
+$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $AS_TEST_BROKER_INVENTORY
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 ##############################################################################################################################

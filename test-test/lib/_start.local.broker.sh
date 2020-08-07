@@ -30,6 +30,7 @@ export brokerDockerImage=$1
 
 export brokerDockerContainerName="pubSubStandardSingleNode"
 dockerComposeYmlFile="$SCRIPT_PATH/PubSubStandard_singleNode.yml"
+brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
 
 echo; echo "##############################################################################################################"
 echo "creating container: $brokerDockerContainerName"
@@ -42,10 +43,9 @@ if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
   # make sure we are pulling the latest
   docker rmi -f $brokerDockerImageLatest > /dev/null 2>&1
 fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 docker-compose -f $dockerComposeYmlFile up -d
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_NAME. aborting."; echo; exit 1; fi
 
 echo
 

@@ -3,13 +3,11 @@ version: '3.3'
 
 services:
   primary:
-    #container_name: pubSubStandardSingleNode
     container_name: "${brokerDockerContainerName}"
-    #image: solace/solace-pubsub-standard:latest
     image: "${brokerDockerImage}"
     shm_size: 1g
     ulimits:
-      core: 1
+      core: 2
       nofile:
         soft: 2448
         hard: 38048
@@ -46,11 +44,11 @@ services:
       #REST Default VPN over TLS
       #- '9443:9443'
       #SMF
-      #- '55555:55555'
+      - '55555:55555'
       #SMF Compressed
-      #- '55003:55003'
+      - '55003:55003'
       #SMF over TLS
-      #- '55443:55443'
+      - '55443:55443'
     environment:
       - username_admin_globalaccesslevel=admin
       - username_admin_password=admin

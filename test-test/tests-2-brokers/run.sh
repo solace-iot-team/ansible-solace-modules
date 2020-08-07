@@ -69,9 +69,9 @@ x=$(wait4Key)
 $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $localBrokerInventoryFile
+$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $localBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $cloudBrokerInventoryFile
+$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $cloudBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 ##############################################################################################################################

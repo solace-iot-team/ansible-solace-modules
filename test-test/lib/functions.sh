@@ -86,15 +86,18 @@ function wait4Key() {
 }
 
 function wait4BrokerStart() {
+  echo "pausing: " > /dev/tty
   local -a marks=( '/' '-' '\' '|' );
   local counter=0
-  while [ $counter -le 120 ]; do
+  while [ $counter -le 20 ]; do
    # echo -ne "${marks[i++ % ${#marks[@]}]}" > /dev/tty
    sleep 1s;
    #echo -ne "\b" > /dev/tty
    echo -n " $counter" > /dev/tty
    counter=$(( $counter + 1 ))
   done;
+  echo  > /dev/tty;
+  echo  > /dev/tty 
 }
 
 # if arg exists, return it

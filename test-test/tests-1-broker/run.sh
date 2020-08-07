@@ -85,7 +85,7 @@ if [ ! -z "$brokerDockerImage" ]; then
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 fi
 
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $brokerInventoryFile
+$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $brokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 ##############################################################################################################################

@@ -28,14 +28,8 @@ SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 source $SCRIPT_PATH/lib/functions.sh
 
 brokerDockerImagesFile="$SCRIPT_PATH/lib/brokerDockerImages.json"
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
-
 brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImagesFile")
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
 
 $SCRIPT_PATH/lib/_start.local.broker.sh $brokerDockerImage
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi

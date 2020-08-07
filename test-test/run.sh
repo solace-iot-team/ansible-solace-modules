@@ -42,6 +42,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 # Configure
 
 runCallDirs=(
+  "tests-general"
   "tests-1-broker"
   "tests-2-brokers"
 )

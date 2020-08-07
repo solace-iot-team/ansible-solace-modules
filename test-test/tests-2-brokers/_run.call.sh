@@ -33,12 +33,13 @@ cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inve
 
 ansibleSolaceTests=(
   "solace_facts"
+  "solace_bridges"
 )
 
 ##############################################################################################################################
 # Run
 
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $cloudBrokerInventoryFile
+$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $cloudBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 brokerDockerImages=$(cat $brokerDockerImagesFile | jq -r ".brokerDockerImages[]")
@@ -47,7 +48,7 @@ for brokerDockerImage in ${brokerDockerImages[@]}; do
   $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-  $AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $localBrokerInventoryFile
+  $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $localBrokerInventoryFile
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
   for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
@@ -80,7 +81,7 @@ for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
 
   $runScript
 
-  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript.aborting."; echo; exit 1; fi
 
 done
 

@@ -48,7 +48,7 @@ ansibleSolaceTests=(
 # Run Cloud
 
 brokerInventoryFile=$cloudBrokerInventoryFile
-$AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $brokerInventoryFile
+$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $brokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
   for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
@@ -75,7 +75,7 @@ for brokerDockerImage in ${brokerDockerImages[@]}; do
   $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-  $AS_TEST_HOME/wait_until_brokers_available/_run.call.sh $brokerInventoryFile
+  $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $brokerInventoryFile
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
     for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
