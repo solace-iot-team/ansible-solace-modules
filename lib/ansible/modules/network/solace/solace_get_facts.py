@@ -32,11 +32,17 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 
 import ansible.module_utils.network.solace.solace_utils as su
 from ansible.module_utils.basic import AnsibleModule
-from ansible.errors import AnsibleError
-from urllib.parse import urlparse
-import json
-from json.decoder import JSONDecodeError
 import traceback
+HAS_IMPORT_ERROR = False
+try:
+    from ansible.errors import AnsibleError
+    from urllib.parse import urlparse
+    import json
+    from json.decoder import JSONDecodeError
+except ImportError:
+    HAS_IMPORT_ERROR = True
+    IMPORT_ERR_TRACEBACK = traceback.format_exc()
+
 
 DOCUMENTATION = '''
 ---
@@ -193,8 +199,12 @@ facts:
 class SolaceGetFactsTask():
 
     def __init__(self, module):
+        if HAS_IMPORT_ERROR:
+            exceptiondata = traceback.format_exc().splitlines()
+            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
+            module.fail_json(msg="failed: Missing module: %s" % exceptionarray[0], exception=IMPORT_ERR_TRACEBACK)
         self.module = module
-        # figure out if solace cloud
+        return
 
     def get_facts(self):
 

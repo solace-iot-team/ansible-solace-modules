@@ -33,12 +33,13 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 import ansible.module_utils.network.solace.solace_utils as su
 from ansible.module_utils.basic import AnsibleModule
 import traceback
+
+HAS_IMPORT_ERROR = False
 try:
     import requests
-    HAS_REQUESTS = True
 except ImportError:
-    REQUESTS_IMP_ERR = traceback.format_exc()
-    HAS_REQUESTS = False
+    HAS_IMPORT_ERROR = True
+    IMPORT_ERR_TRACEBACK = traceback.format_exc()
 
 
 DOCUMENTATION = '''
@@ -49,7 +50,7 @@ short_description: Check if broker/service is reachable and responsive.
 
 description: >
   Check if broker/service is reachable and responsive.
-  Calls "GET /about" and sets "rc=0" if reachable, "rc=-1" if not.
+  Calls "GET /about" and sets "is_available=True/False".
 
 extends_documentation_fragment:
 - solace.broker
@@ -75,20 +76,27 @@ EXAMPLES = '''
 
   tasks:
 
-    - name: Pause Until Broker/Service available
+    - name: "Pause Until Broker/Service available"
       solace_get_available:
       register: _result
-      until: _result.rc != -1
+      until: "_result.is_available"
       retries: 25 # 25 * 5 seconds
       delay: 5 # Every 5 seconds
 '''
 
 RETURN = '''
-rc:
-    description: Return code.
-    type: int
-    rc = 0 : broker / service is reachable
-    rc = -1 : broker / service is not reachable
+is_available:
+    description: Flag indicating whether broker was reachable or not.
+    type: bool
+msg:
+    description: The response from the HTTP call or error description.
+    type: str
+
+samples:
+
+    "is_available": false,
+    "msg": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+
 
 '''
 
@@ -96,12 +104,12 @@ rc:
 class SolaceGetAvailableTask(su.SolaceTask):
 
     def __init__(self, module):
+        if HAS_IMPORT_ERROR:
+            exceptiondata = traceback.format_exc().splitlines()
+            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
+            module.fail_json(msg="failed: Missing module: %s" % exceptionarray[0], exception=IMPORT_ERR_TRACEBACK)
         su.SolaceTask.__init__(self, module)
-        self._module_check_imports()
-
-    def _module_check_imports(self):
-        if not HAS_REQUESTS:
-            self.module.fail_json(msg=su.EX_MSG_MISSING_REQUESTS_MODULE, **su.EX_RESULT, exception=REQUESTS_IMP_ERR)
+        return
 
     def get_available(self):
         ok, resp = make_get_request(self.solace_config, [su.SEMP_V2_CONFIG] + ["about"])
@@ -146,16 +154,14 @@ def run_module():
 
     result = dict(
         changed=False,
-        rc=0
+        rc=0,
+        is_available=True
     )
 
     solace_task = SolaceGetAvailableTask(module)
     ok, resp = solace_task.get_available()
-    if not ok:
-        result['rc'] = -1
-        module.fail_json(msg=resp, **result)
-
-    module.exit_json(**result)
+    result['is_available'] = ok
+    module.exit_json(msg=resp, **result)
 
 
 def main():

@@ -32,37 +32,29 @@ import re
 import traceback
 import logging
 import json
-from json.decoder import JSONDecodeError
 import time
 import os
-from distutils.util import strtobool
-from ansible.errors import AnsibleError
 import sys
+from distutils.util import strtobool
 
+HAS_IMPORT_ERROR = False
 try:
+    from ansible.errors import AnsibleError
+    from json.decoder import JSONDecodeError
     import requests
-    HAS_REQUESTS = True
-except ImportError:
-    REQUESTS_IMP_ERR = traceback.format_exc()
-    HAS_REQUESTS = False
-try:
     import xmltodict
-    HAS_XML2DICT = True
 except ImportError:
-    XML2DICT_IMP_ERR = traceback.format_exc()
-    HAS_XML2DICT = False
+    HAS_IMPORT_ERROR = True
+    IMPORT_ERR_TRACEBACK = traceback.format_exc()
 
-
-""" Exception Messages """
-EX_MSG_HINT_1 = "Install module. "
-EX_MSG_HINT_2 = "Possible solution: Set ANSIBLE_PYTHON_INTERPRETER={path-to-pyton}."
-EX_MSG_MISSING_REQUESTS_MODULE = "Missing 'requests' module. " + EX_MSG_HINT_1 + EX_MSG_HINT_2
-EX_MSG_MISSING_XML2DICT_MODULE = "Missing 'xml2dict' module. " + EX_MSG_HINT_1 + EX_MSG_HINT_2
-EX_MSG_UNSUPPORTED_PYTHON_VERSION = "Unsupported python version: "
-EX_RESULT = dict(
-    rc=2
-)
-
+# check python version
+_PY3_MIN = sys.version_info[:2] >= (3, 6)
+if not _PY3_MIN:
+    print(
+        '\n{"failed": true, '
+        '"msg": "failed: ansible-solace requires a minimum of Python3 version 3.6. Current version: %s"}' % (''.join(sys.version.splitlines()))
+    )
+    sys.exit(1)
 
 """ Default Whitelist Keys """
 DEFAULT_WHITELIST_KEYS = ['password']
@@ -116,7 +108,7 @@ if enableLoggingEnvVal is not None and enableLoggingEnvVal != '':
     try:
         ENABLE_LOGGING = bool(strtobool(enableLoggingEnvVal))
     except ValueError:
-        raise ValueError("invalid value for env var: 'ANSIBLE_SOLACE_ENABLE_LOGGING={}'. use 'true' or 'false' instead.".format(enableLoggingEnvVal))
+        raise ValueError("failed: invalid value for env var: 'ANSIBLE_SOLACE_ENABLE_LOGGING={}'. use 'true' or 'false' instead.".format(enableLoggingEnvVal))
 
 if ENABLE_LOGGING:
     logging.basicConfig(filename='ansible-solace.log',
@@ -150,10 +142,12 @@ class SolaceConfig(object):
 class SolaceTask:
 
     def __init__(self, module):
+        if HAS_IMPORT_ERROR:
+            exceptiondata = traceback.format_exc().splitlines()
+            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
+            module.fail_json(msg="failed: Missing module: %s" % exceptionarray[0], exception=IMPORT_ERR_TRACEBACK)
+
         self.module = module
-
-        self._check_imports_version()
-
         solace_cloud_api_token = self.module.params.get('solace_cloud_api_token', None)
         solace_cloud_service_id = self.module.params.get('solace_cloud_service_id', None)
         # either both are provided or none
@@ -161,7 +155,7 @@ class SolaceTask:
               or (not solace_cloud_api_token and not solace_cloud_service_id))
         if not ok:
             result = dict(changed=False, response=dict())
-            msg = "you must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
+            msg = "failed: must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
             self.module.fail_json(msg=msg, **result)
 
         if ok and solace_cloud_api_token and solace_cloud_service_id:
@@ -183,17 +177,6 @@ class SolaceTask:
             solace_cloud_config=solace_cloud_config
         )
         return
-
-    def _check_imports_version(self):
-        if not HAS_REQUESTS:
-            self.module.fail_json(msg=EX_MSG_MISSING_REQUESTS_MODULE, **EX_RESULT, exception=REQUESTS_IMP_ERR)
-        if not HAS_XML2DICT:
-            self.module.fail_json(msg=EX_MSG_MISSING_XML2DICT_MODULE, **EX_RESULT, exception=XML2DICT_IMP_ERR)
-        # check python version
-        version_info = sys.version_info
-        if version_info.major != 3 or version_info.minor < 6:
-            msg = [EX_MSG_UNSUPPORTED_PYTHON_VERSION, str(version_info), EX_MSG_HINT_2]
-            self.module.fail_json(msg=msg, **EX_RESULT)
 
     def do_task(self):
 
@@ -745,13 +728,14 @@ def is_broker_solace_cloud(solace_config):
     return True
 
 
-class BearerAuth(requests.auth.AuthBase):
-    def __init__(self, token):
-        self.token = token
+if not HAS_IMPORT_ERROR:
+    class BearerAuth(requests.auth.AuthBase):
+        def __init__(self, token):
+            self.token = token
 
-    def __call__(self, r):
-        r.headers["authorization"] = "Bearer " + self.token
-        return r
+        def __call__(self, r):
+            r.headers["authorization"] = "Bearer " + self.token
+            return r
 
 
 def _make_request(func, solace_config, path_array, json=None):

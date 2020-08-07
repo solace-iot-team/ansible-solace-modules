@@ -32,20 +32,15 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 
 import ansible.module_utils.network.solace.solace_utils as su
 from ansible.module_utils.basic import AnsibleModule
-from ansible.errors import AnsibleError
 import traceback
+HAS_IMPORT_ERROR = False
 try:
+    from ansible.errors import AnsibleError
     import requests
-    HAS_REQUESTS = True
-except ImportError:
-    REQUESTS_IMP_ERR = traceback.format_exc()
-    HAS_REQUESTS = False
-try:
     import xmltodict
-    HAS_XML2DICT = True
 except ImportError:
-    XML2DICT_IMP_ERR = traceback.format_exc()
-    HAS_XML2DICT = False
+    HAS_IMPORT_ERROR = True
+    IMPORT_ERR_TRACEBACK = traceback.format_exc()
 
 DOCUMENTATION = '''
 ---
@@ -144,14 +139,12 @@ ansible_facts.solace:
 class SolaceGatherFactsTask(su.SolaceTask):
 
     def __init__(self, module):
+        if HAS_IMPORT_ERROR:
+            exceptiondata = traceback.format_exc().splitlines()
+            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
+            module.fail_json(msg="failed: Missing module: %s" % exceptionarray[0], exception=IMPORT_ERR_TRACEBACK)
         su.SolaceTask.__init__(self, module)
-        self._module_check_imports()
-
-    def _module_check_imports(self):
-        if not HAS_REQUESTS:
-            self.module.fail_json(msg=su.EX_MSG_MISSING_REQUESTS_MODULE, **su.EX_RESULT, exception=REQUESTS_IMP_ERR)
-        if not HAS_XML2DICT:
-            self.module.fail_json(msg=su.EX_MSG_MISSING_XML2DICT_MODULE, **su.EX_RESULT, exception=XML2DICT_IMP_ERR)
+        return
 
     def _get_about_info(self):
         # GET /about, /about/api, /about/user, /about/user/msgVpns
