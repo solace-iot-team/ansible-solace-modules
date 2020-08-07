@@ -40,6 +40,10 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
 ##############################################################################################################################
 # Configure
+testTestLogFile="./ansible-test-test.log"
+rm -f $testTestLogFile
+export ANSIBLE_LOG_PATH="$testTestLogFile"
+#export ANSIBLE_DEBUG=True
 
 runCallDirs=(
   "tests-general"
