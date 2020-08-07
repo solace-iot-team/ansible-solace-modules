@@ -27,21 +27,29 @@ SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 if [[ $# != 2 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory_1} {full_path}/{broker_inventory_2}'"; exit 1; fi
 BROKERS_INVENTORY_1=$1
 BROKERS_INVENTORY_2=$2
+source $AS_TEST_HOME/lib/functions.sh
 ##############################################################################################################################
 # Prepare
 
-ANSIBLE_SOLACE_LOG_FILE="$SCRIPT_PATH/ansible-solace.log"
-rm -f $ANSIBLE_SOLACE_LOG_FILE
-
 ##############################################################################################################################
 # Run
+playbook="$SCRIPT_PATH/exceptions.bad-solace-cloud-config.playbook.yml"
+badCloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/bad.cloud.broker.inventory.json") || exit
+brokers="all"
+ansible-playbook \
+                  --forks 1 \
+                  -i $badCloudBrokerInventoryFile \
+                  $playbook \
+                  --extra-vars "brokers=$brokers" \
+                  -vvv
+if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
+
 playbooks=(
   "$SCRIPT_PATH/exceptions.1.playbook.yml"
   "$SCRIPT_PATH/exceptions.2.playbook.yml"
   "$SCRIPT_PATH/examples.playbook.yml"
   "$SCRIPT_PATH/playbook.yml"
 )
-
 brokers="all"
 
 for playbook in ${playbooks[@]}; do
@@ -55,5 +63,6 @@ for playbook in ${playbooks[@]}; do
   if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
 
 done
+
 ###
 # The End.

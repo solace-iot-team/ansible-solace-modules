@@ -45,13 +45,14 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
   # export ANSIBLE_SOLACE_ENABLE_LOGGING=true
 
   ansibleSolaceTests=(
-    "solace_bridges"
     "solace_facts"
+    "solace_bridges"
   )
 
   brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
   localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
   cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
+  badCloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/bad.cloud.broker.inventory.json") || exit
 
   brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImagesFile")
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
@@ -59,6 +60,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 x=$(showEnv)
 echo "localBrokerInventoryFile=$localBrokerInventoryFile"
 echo "cloudBrokerInventoryFile=$cloudBrokerInventoryFile"
+echo "badCloudBrokerInventoryFile=$badCloudBrokerInventoryFile"
 echo "brokerDockerImage=$brokerDockerImage"
 echo
 x=$(wait4Key)
@@ -80,14 +82,11 @@ if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
   for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
 
     runScript="$AS_TEST_SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $localBrokerInventoryFile $cloudBrokerInventoryFile"
-
     echo; echo "##############################################################################################################"
     echo "# test: $ansibleSolaceTest"
     echo "# calling: $runScript"
-
     $runScript
-
-    if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+    if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH .aborting."; echo; exit 1; fi
 
   done
 

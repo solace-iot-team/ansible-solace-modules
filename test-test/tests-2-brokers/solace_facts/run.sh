@@ -44,14 +44,15 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
     # select inventory
     localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
     cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
+    badCloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/bad.cloud.broker.inventory.json") || exit
     # select broker(s) inside inventory
     export brokers="all"
     # playbook
     playbooks=(
+      "./playbook.yml"
       "./exceptions.1.playbook.yml"
       "./exceptions.2.playbook.yml"
       "./examples.playbook.yml"
-      "./playbook.yml"
     )
 
   # END SELECT
@@ -67,13 +68,24 @@ ANSIBLE_SOLACE_LOG_FILE="$AS_TEST_SCRIPT_PATH/ansible-solace.log"
 rm -f $ANSIBLE_SOLACE_LOG_FILE
 rm -f hostvars*.json
 
+##############################################################################################################################
+# Run
+$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $badCloudBrokerInventoryFile
+if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+
+playbook="./exceptions.bad-solace-cloud-config.playbook.yml"
+ansible-playbook \
+                  --forks 1 \
+                  -i $badCloudBrokerInventoryFile \
+                  $playbook \
+                  --extra-vars "brokers=$brokers" \
+                  -vvv
+if [[ $? != 0 ]]; then echo ">>> ERR. aborting."; exit 1 fi
+
 $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $localBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $cloudBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-##############################################################################################################################
-# Run
 
 for playbook in ${playbooks[@]}; do
 
@@ -85,13 +97,7 @@ for playbook in ${playbooks[@]}; do
                     --extra-vars "brokers=$brokers" \
                     -vvv
 
-  if [[ $? != 0 ]]; then
-
-    echo ">>> ERROR";
-    echo; echo "log: $ANSIBLE_SOLACE_LOG_FILE"
-    echo
-
-  fi
+  if [[ $? != 0 ]]; then echo ">>> ERR. aborting."; exit 1 fi
 
 done
 

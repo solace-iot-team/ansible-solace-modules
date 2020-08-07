@@ -41,22 +41,23 @@ ansibleSolaceTests=(
 # Run
 
 $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $cloudBrokerInventoryFile
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH .aborting."; echo; exit 1; fi
 
 brokerDockerImages=$(cat $brokerDockerImagesFile | jq -r ".brokerDockerImages[]")
 for brokerDockerImage in ${brokerDockerImages[@]}; do
 
   $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
-  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then ">>> ERR: $SCRIPT_PATH .aborting."; echo; exit 1; fi
 
   $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $localBrokerInventoryFile
-  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH .aborting."; echo; exit 1; fi
 
   for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
 
     runScript="$SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $localBrokerInventoryFile $cloudBrokerInventoryFile"
 
     echo; echo "##############################################################################################################"
+    echo "# script: $SCRIPT_PATH"
     echo "# test: $ansibleSolaceTest"
     echo "# local broker image: $brokerDockerImage"
     echo "# cloud broker: "$(cat $cloudBrokerInventoryFile | jq -r ".[].hosts[].meta")
@@ -64,27 +65,12 @@ for brokerDockerImage in ${brokerDockerImages[@]}; do
 
     $runScript
 
-    if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+    if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH .aborting."; echo; exit 1; fi
 
   done
 
 done
 
-##############################################################################################################################
-# Run
-for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
-
-  runScript="$SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $localBrokerInventoryFile $cloudBrokerInventoryFile"
-
-  echo; echo "##############################################################################################################"
-  echo "# test: $ansibleSolaceTest"
-  echo "# calling: $runScript"
-
-  $runScript
-
-  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript.aborting."; echo; exit 1; fi
-
-done
 
 ###
 # The End.
