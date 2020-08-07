@@ -32,6 +32,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 
 import ansible.module_utils.network.solace.solace_utils as su
 from ansible.module_utils.basic import AnsibleModule
+
 import traceback
 HAS_IMPORT_ERROR = False
 try:
@@ -184,13 +185,14 @@ class SolaceGatherFactsTask(su.SolaceTask):
         xml_post_cmd = "<rpc><show><service></service></show></rpc>"
         ok, resp_service = make_sempv1_post_request(self.solace_config, xml_post_cmd)
         if not ok:
+            resp_service['hint'] = "this could be a Solace Cloud service, but not configured as such."
             return False, resp_service
         resp = resp_service['rpc-reply']['rpc']['show']['service']['services']
-
         # get the virutal router name via SEMP v1
         xml_post_cmd = "<rpc><show><router-name></router-name></show></rpc>"
         ok, resp_virtual_router = make_sempv1_post_request(self.solace_config, xml_post_cmd)
         if not ok:
+            resp_virtual_router['hint'] = "this could be a Solace Cloud service, but not configured as such."
             return False, resp_virtual_router
         resp['virtualRouterName'] = resp_virtual_router['rpc-reply']['rpc']['show']['router-name']['router-name']
 
@@ -271,7 +273,16 @@ def make_sempv1_post_request(solace_config, xml_data):
         su.log_http_roundtrip(resp)
     if resp.status_code != 200:
         raise AnsibleError("SEMP v1 call not successful. Pls check the log and raise an issue.")
+    # SEMP v1 always returns 200 (it seems)
+    # error: rpc-reply.execute-result.@code != ok or missing
+    # if error: rpc-reply ==> display
     resp_body = xmltodict.parse(resp.text)
+    try:
+        code = resp_body['rpc-reply']['execute-result']['@code']
+    except KeyError:
+        return False, resp_body
+    if code != "ok":
+        return False, resp_body
     return True, resp_body
 
 
@@ -308,6 +319,7 @@ def run_module():
     solace_task = SolaceGatherFactsTask(module)
     ok, resp = solace_task.gather_facts()
     if not ok:
+        result['rc'] = 1
         module.fail_json(msg=resp, **result)
 
     result['ansible_facts']['solace'] = resp
