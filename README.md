@@ -41,10 +41,9 @@ export ANSIBLE_LIBRARY={your-install-path}/ansible/modules
 
 # check:
 ansible-doc -l | grep solace
-
 ```
 
-_Note: You can also have a look at `set-ansible-env.sh`._
+_Note: You can also have a look at [set-ansible-env.sh](./set-ansible-env.sh)._
 
 **Python interpreter:**
 
@@ -147,13 +146,18 @@ Status of the `solace_*` modules:
 
 | Module | SEMP Endpoint | Type | Status | Example |
 | ------ | ------------- |:----:|:------:|:-------:|
-| [solace_get_facts](lib/ansible/modules/network/solace/solace_get_facts.py) | about/... | Query | :sunny: | [:page_facing_up:](examples/solace_get_facts.playbook.yml) |
+| [solace_get_available](lib/ansible/modules/network/solace/solace_get_available.py) | about | Query | :sunny: ||
+| [solace_gather_facts](lib/ansible/modules/network/solace/solace_gather_facts.py) | about, service, ... | Query | :sunny: ||
+| [solace_get_facts](lib/ansible/modules/network/solace/solace_get_facts.py) | retrieve facts gathered by solace_gather_facts | ansible_facts query | :sunny: ||
 |  |  |  | | |
 | [solace_acl_profile](lib/ansible/modules/network/solace/solace_acl_profile.py) | aclProfile | Action | :sunny: | [:page_facing_up:](examples/solace_acl_profile.playbook.playbook.yml) |
 | [solace_acl_client_connect_exception](lib/ansible/modules/network/solace/solace_acl_client_connect_exception.py) | aclProfile | Action | :sunny: | [:page_facing_up:](examples/solace_acl_profile.playbook.yml) |
 | [solace_acl_publish_topic_exception](lib/ansible/modules/network/solace/solace_acl_publish_topic_exception.py) | aclProfile | Action | :sunny: | [:page_facing_up:](examples/solace_acl_profile.playbook.yml) |
 | [solace_acl_subscribe_topic_exception](lib/ansible/modules/network/solace/solace_acl_subscribe_topic_exception.py) | aclProfile | Action | :sunny: | [:page_facing_up:](examples/solace_acl_profile.playbook.yml) |
 |   |   |   |   |   |
+| [solace_get_bridges](lib/ansible/modules/network/solace/solace_get_bridges.py) | bridge | Query | :sunny: | |
+| [solace_get_bridge_remote_vpns](lib/ansible/modules/network/solace/solace_get_bridge_remote_vpns.py) | bridge | Query | |
+| [solace_get_bridge_remote_subscriptions](lib/ansible/modules/network/solace/solace_get_bridge_remote_subscriptions.py) | bridge | Query | :sunny: | |
 | [solace_bridge](lib/ansible/modules/network/solace/solace_bridge.py) | bridge | Action | :sunny: | [:page_facing_up:](examples/solace_bridge.yml)|
 | [solace_bridge_remote_subscription](lib/ansible/modules/network/solace/solace_bridge_remote_subscription.py) | bridge | Action | :sunny: | [:page_facing_up:](examples/solace_bridge.yml)|
 | [solace_bridge_remote_vpn](lib/ansible/modules/network/solace/solace_bridge_remote_vpn.py) | bridge | Action | :sunny: | [:page_facing_up:](examples/solace_bridge.yml)|
@@ -191,10 +195,6 @@ Status of the `solace_*` modules:
 | [solace_topic_endpoint](lib/ansible/modules/network/solace/solace_topic_endpoint.py) | topicEndpoint | Action | :sunny: | |
 |   |   |   |   |   |
 | [solace_vpn](lib/ansible/modules/network/solace/solace_vpn.py) | msgVpn | Action | :sunny: | [:page_facing_up:](examples/solace_vpn.yml) |
-
-# Tips & Tricks
-
-[See Tips & Tricks](./TipsTricks.md).
 
 # Writing New Modules
 

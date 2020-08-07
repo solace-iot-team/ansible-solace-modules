@@ -27,8 +27,10 @@
 # usage: source set-ansible-env.sh
 #
 
-export ANSIBLE_SOLACE_ENABLE_LOGGING=true
+# adjust to your python installation
 export ANSIBLE_PYTHON_INTERPRETER=/usr/local/bin/python
+
+export ANSIBLE_SOLACE_ENABLE_LOGGING=true
 
 
 # Prepend ansible-solace path to ansible env vars

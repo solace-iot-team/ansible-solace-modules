@@ -34,23 +34,39 @@ import logging
 import json
 import time
 import os
+import sys
 from distutils.util import strtobool
-from ansible.errors import AnsibleError
 
+HAS_IMPORT_ERROR = False
 try:
+    from ansible.errors import AnsibleError
+    from json.decoder import JSONDecodeError
     import requests
-    HAS_REQUESTS = True
+    import xmltodict
 except ImportError:
-    REQUESTS_IMP_ERR = traceback.format_exc()
-    HAS_REQUESTS = False
+    HAS_IMPORT_ERROR = True
+    IMPORT_ERR_TRACEBACK = traceback.format_exc()
+
+# check python version
+_PY3_MIN = sys.version_info[:2] >= (3, 6)
+if not _PY3_MIN:
+    print(
+        '\n{"failed": true, '
+        '"msg": "failed: ansible-solace requires a minimum of Python3 version 3.6. Current version: %s. Hint: set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3"}' % (''.join(sys.version.splitlines()))
+    )
+    sys.exit(1)
+
+""" Default Whitelist Keys """
+DEFAULT_WHITELIST_KEYS = ['password']
 
 """ Solace Cloud reources """
 SOLACE_CLOUD_API_SERVICES_BASE_PATH = 'https://api.solace.cloud/api/v0/services'
 SOLACE_CLOUD_REQUESTS = 'requests'
 SOLACE_CLOUD_CLIENT_PROFILE_REQUESTS = 'clientProfileRequests'
 
-""" Standard reources """
+""" Standard resources """
 SEMP_V2_CONFIG = '/SEMP/v2/config'
+SEMP_V2_MONITOR = '/SEMP/v2/monitor'
 
 """ VPN level reources """
 
@@ -92,7 +108,7 @@ if enableLoggingEnvVal is not None and enableLoggingEnvVal != '':
     try:
         ENABLE_LOGGING = bool(strtobool(enableLoggingEnvVal))
     except ValueError:
-        raise ValueError("invalid value for env var: 'ANSIBLE_SOLACE_ENABLE_LOGGING={}'. use 'true' or 'false' instead.".format(enableLoggingEnvVal))
+        raise ValueError("failed: invalid value for env var: 'ANSIBLE_SOLACE_ENABLE_LOGGING={}'. use 'true' or 'false' instead.".format(enableLoggingEnvVal))
 
 if ENABLE_LOGGING:
     logging.basicConfig(filename='ansible-solace.log',
@@ -126,8 +142,12 @@ class SolaceConfig(object):
 class SolaceTask:
 
     def __init__(self, module):
-        self.module = module
+        if HAS_IMPORT_ERROR:
+            exceptiondata = traceback.format_exc().splitlines()
+            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
+            module.fail_json(msg="failed: Missing module: %s" % exceptionarray[0], exception=IMPORT_ERR_TRACEBACK)
 
+        self.module = module
         solace_cloud_api_token = self.module.params.get('solace_cloud_api_token', None)
         solace_cloud_service_id = self.module.params.get('solace_cloud_service_id', None)
         # either both are provided or none
@@ -135,7 +155,7 @@ class SolaceTask:
               or (not solace_cloud_api_token and not solace_cloud_service_id))
         if not ok:
             result = dict(changed=False, response=dict())
-            msg = "you must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
+            msg = "failed: must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
             self.module.fail_json(msg=msg, **result)
 
         if ok and solace_cloud_api_token and solace_cloud_service_id:
@@ -160,9 +180,6 @@ class SolaceTask:
 
     def do_task(self):
 
-        if not HAS_REQUESTS:
-            self.module.fail_json(msg='Missing requests module', exception=REQUESTS_IMP_ERR)
-
         result = dict(
             changed=False,
             response=dict()
@@ -183,7 +200,9 @@ class SolaceTask:
         # else response was good
         current_configuration = resp
         # whitelist of configuration items that are not returned by GET
-        whitelist = ['password']
+        whitelist = DEFAULT_WHITELIST_KEYS
+        whitelist.extend(self.get_whitelist_keys())
+        required_together_keys_list = self.get_required_together_keys()
 
         if self.lookup_item() in current_configuration:
             if self.module.params['state'] == 'absent':
@@ -203,13 +222,38 @@ class SolaceTask:
                     removed_keys = [item for item in settings if item in whitelist]
                     # fail if any unexpected settings found
                     if len(bad_keys):
-                        self.module.fail_json(msg='Invalid key(s): ' + ', '.join(bad_keys), **result)
+                        msg = "invalid key(s) found in 'settings'"
+                        result['response'] = dict(
+                            invalid_keys=', '.join(bad_keys),
+                            hint=[
+                                    "possible causes:",
+                                    "- wrong spelling or wrong key: check the SEMPv2 reference documentation",
+                                    "- module's 'whitelist' isn't up to date: raise an issue"
+                                ],
+                            valid_keys=list(current_settings) + removed_keys
+                        )
+                        self.module.fail_json(msg=msg, **result)
                     # changed keys are those that exist in settings and don't match current settings
                     changed_keys = [x for x in settings if x in current_settings.keys()
                                     and settings[x] != current_settings[x]]
                     # add back in anything from the whitelist
                     changed_keys = changed_keys + removed_keys
-                    # add any whitelisted items
+                    # add any 'required together' keys
+                    for together_keys in required_together_keys_list:
+                        add_keys = [x for x in changed_keys if x in together_keys]
+                        if(add_keys):
+                            changed_keys += together_keys
+                    # remove duplicates
+                    changed_keys = list(dict.fromkeys(changed_keys))
+                    # check if user has provided all the keys
+                    missing_keys = []
+                    for key in changed_keys:
+                        if key not in settings:
+                            missing_keys += [key]
+                    if len(missing_keys):
+                        msg = "missing key(s) in 'settings': " + ', '.join(missing_keys)
+                        self.module.fail_json(msg=msg, **result)
+
                     if len(changed_keys):
                         delta_settings = {key: settings[key] for key in changed_keys}
                         crud_args.append(delta_settings)
@@ -276,8 +320,95 @@ class SolaceTask:
             raise ValueError("lookup_key: '{}' not found in lookup_dict['{}']: '{}'".format(lookup_key, version_key, json.dumps(version_lookup_dict)))
         return version_lookup_dict[lookup_key]
 
+    def get_whitelist_keys(self):
+        if hasattr(self, 'WHITELIST_KEYS'):
+            return self.WHITELIST_KEYS
+        return []
+
+    def get_required_together_keys(self):
+        if hasattr(self, 'REQUIRED_TOGETHER_KEYS'):
+            return self.REQUIRED_TOGETHER_KEYS
+        return dict()
+
+    def get_list_default_query_params(self):
+        return 'count=100'
+
+    def execute_get_list(self, path_array):
+
+        query = self.get_list_default_query_params()
+        if query is None:
+            query = ''
+
+        query_params = self.module.params['query_params']
+        if query_params:
+            if ("select" in query_params
+                    and query_params['select'] is not None
+                    and len(query_params['select']) > 0):
+                query += ('&' if query != '' else '')
+                query += "select=" + ','.join(query_params['select'])
+            if ("where" in query_params
+                    and query_params['where'] is not None
+                    and len(query_params['where']) > 0):
+                where_array = []
+                for i, where_elem in enumerate(query_params['where']):
+                    where_array.append(where_elem.replace('/', '%2F'))
+                query += ('&' if query != '' else '')
+                query += "where=" + ','.join(where_array)
+
+        api_path = SEMP_V2_CONFIG
+        if self.module.params['api'] == 'monitor':
+            api_path = SEMP_V2_MONITOR
+        path_array = [api_path] + path_array
+
+        path = compose_path(path_array)
+
+        url = self.solace_config.vmr_url + path + ("?" + query if query is not None else '')
+
+        result_list = []
+
+        hasNextPage = True
+
+        while hasNextPage:
+
+            try:
+                resp = requests.get(
+                            url,
+                            json=None,
+                            auth=self.solace_config.vmr_auth,
+                            timeout=self.solace_config.vmr_timeout,
+                            headers={'x-broker-name': self.solace_config.x_broker},
+                            params=None
+                )
+
+                if ENABLE_LOGGING:
+                    log_http_roundtrip(resp)
+
+                if resp.status_code != 200:
+                    return False, parse_bad_response(resp)
+                else:
+                    body = resp.json()
+                    if "data" in body.keys():
+                        result_list.extend(body['data'])
+
+            except requests.exceptions.ConnectionError as e:
+                return False, str(e)
+
+            if "meta" not in body:
+                hasNextPage = False
+            elif "paging" not in body["meta"]:
+                hasNextPage = False
+            elif "nextPageUri" not in body["meta"]["paging"]:
+                hasNextPage = False
+            else:
+                url = body["meta"]["paging"]["nextPageUri"]
+
+        return True, result_list
+
+###
+# End Class SolaceTask
 
 # composable argument specs
+
 
 def arg_spec_broker():
     return dict(
@@ -306,7 +437,7 @@ def arg_spec_vpn():
 
 def arg_spec_virtual_router():
     return dict(
-        virtual_router=dict(type='str', default='primary', choice=['primary', 'backup'])
+        virtual_router=dict(type='str', default='primary', choices=['primary', 'backup'])
     )
 
 
@@ -341,8 +472,9 @@ def arg_spec_crud():
     return arg_spec
 
 
-def arg_spec_query():
+def arg_spec_get_list():
     return dict(
+        api=dict(type='str', default='config', choices=['config', 'monitor']),
         query_params=dict(type='dict',
                           require=False,
                           options=dict(
@@ -386,6 +518,21 @@ def _type_conversion(d):
     return d
 
 
+def _handle_get_configuration_not_found_errors(resp):
+    # Solace Cloud can return:
+    # "error": {
+    #   "code": 6,
+    #   "description": "Problem with tlsCipherSuiteList: Could not retrieve information from management-plane: not found",
+    #   "status": "NOT_FOUND"
+    # },
+    error = resp['error']
+    code = error['code']
+    description = error['description']
+    if code == 6 and description.find("Problem with tlsCipherSuiteList") >= 0:
+        return False, resp
+    return True, dict()
+
+
 def get_configuration(solace_config, path_array, key):
     ok, resp = make_get_request(solace_config, path_array)
     if ok:
@@ -405,80 +552,36 @@ def get_configuration(solace_config, path_array, key):
                 and 'error' in resp.keys()
                 and 'code' in resp['error'].keys()
                 and resp['error']['code'] == 6):
-            return True, dict()
+            return _handle_get_configuration_not_found_errors(resp)
 
     return False, resp
 
 
-def get_list(solace_config, path_array, query_params):
-
-    query = 'count=100'
-
-    if query_params:
-        if "select" in query_params and len(query_params['select']) > 0:
-            query = query + "&select=" + ','.join(query_params['select'])
-        if "where" in query_params and len(query_params['where']) > 0:
-            where_array = []
-            for i, where_elem in enumerate(query_params['where']):
-                where_array.append(where_elem.replace('/', '%2F'))
-            query = query + "&where=" + ','.join(where_array)
-
-    path = compose_path(path_array)
-
-    url = solace_config.vmr_url + path + "?" + query
-
-    result_list = []
-
-    hasNextPage = True
-
-    while hasNextPage:
-
-        try:
-            resp = requests.get(
-                        url,
-                        json=None,
-                        auth=solace_config.vmr_auth,
-                        timeout=solace_config.vmr_timeout,
-                        headers={'x-broker-name': solace_config.x_broker},
-                        params=None
-            )
-
-            if ENABLE_LOGGING:
-                log_http_roundtrip(resp)
-
-            if resp.status_code != 200:
-                return False, parse_bad_response(resp)
-            else:
-                body = resp.json()
-                if "data" in body.keys():
-                    result_list.extend(body['data'])
-
-        except requests.exceptions.ConnectionError as e:
-            return False, str(e)
-
-        if "meta" not in body:
-            hasNextPage = False
-        elif "paging" not in body["meta"]:
-            hasNextPage = False
-        elif "nextPageUri" not in body["meta"]["paging"]:
-            hasNextPage = False
-        else:
-            url = body["meta"]["paging"]["nextPageUri"]
-
-    return True, result_list
-
-
 # request/response handling
 
+# data_dict = xmltodict.parse(xml_file.read())
+# json_data = json.dumps(data_dict)
+
 def log_http_roundtrip(resp):
-    # body is either empty or of type 'bytes'
-    if hasattr(resp.request, 'body') and resp.request.body is not None:
-        request_body = json.loads(resp.request.body.decode())
+    if hasattr(resp.request, 'body') and resp.request.body:
+        try:
+            decoded_body = resp.request.body.decode()
+            request_body = json.loads(decoded_body)
+        except AttributeError:
+            request_body = resp.request.body
     else:
         request_body = "{}"
 
     if resp.text:
-        resp_body = json.loads(resp.text)
+        try:
+            resp_body = json.loads(resp.text)
+        except JSONDecodeError:
+            # try XML parsing it
+            try:
+                resp_body = xmltodict.parse(resp.text)
+            except Exception:
+                # print as text at least
+                resp_body = resp.text
     else:
         resp_body = None
 
@@ -544,7 +647,7 @@ def _wait_solace_cloud_request_completed(solace_config, request_resp):
 def _parse_response(solace_config, resp):
     if ENABLE_LOGGING:
         log_http_roundtrip(resp)
-    # Solace Cloud API returns 202: accepted
+    # Solace Cloud API returns 202: accepted if long running request
     if resp.status_code == 202 and is_broker_solace_cloud(solace_config):
         resp = _wait_solace_cloud_request_completed(solace_config, resp)
     elif resp.status_code != 200:
@@ -569,6 +672,19 @@ def _get_reason(status_code):
     return HTTP_CODE_REASON.get("_" + str(status_code))
 
 
+def _create_hint_bad_response(meta):
+    # accessing solace cloud service using SEMPv2 API not allowed:
+    # error.code == 89
+    if 'error' in meta and 'code' in meta['error']:
+        if meta['error']['code'] == 89:
+            meta['hint'] = [
+                "This might be a Solace Cloud service.",
+                "If so, check the module's documentation on how to provide Solace Cloud parameters:",
+                "ansible-doc <module-name>"
+            ]
+    return meta
+
+
 def parse_bad_response(resp):
     if not resp.text:
         return resp
@@ -578,7 +694,7 @@ def parse_bad_response(resp):
             'description' in j['meta']['error'].keys():
         # return j['meta']['error']['description']
         # we want to see the full message, including the code & request
-        return j['meta']
+        return _create_hint_bad_response(j['meta'])
     return dict(status_code=resp.status_code,
                 reason=_get_reason(resp.status_code),
                 body=json.loads(resp.text)
@@ -612,13 +728,14 @@ def is_broker_solace_cloud(solace_config):
     return True
 
 
-class BearerAuth(requests.auth.AuthBase):
-    def __init__(self, token):
-        self.token = token
+if not HAS_IMPORT_ERROR:
+    class BearerAuth(requests.auth.AuthBase):
+        def __init__(self, token):
+            self.token = token
 
-    def __call__(self, r):
-        r.headers["authorization"] = "Bearer " + self.token
-        return r
+        def __call__(self, r):
+            r.headers["authorization"] = "Bearer " + self.token
+            return r
 
 
 def _make_request(func, solace_config, path_array, json=None):
@@ -645,6 +762,7 @@ def _make_request(func, solace_config, path_array, json=None):
             )
         )
     except requests.exceptions.ConnectionError as e:
+        logging.debug("ConnectionError: %s", str(e))
         return False, str(e)
 
 

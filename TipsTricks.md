@@ -1,5 +1,7 @@
 # Tips & Tricks
 
+**DEPRECATED: will move to samples project.**
+
 ## Using the API Version in Playbooks
 
 The `settings` fieldnames can differ from version to version.
@@ -110,7 +112,7 @@ Example inventory template including Solace Cloud API token and service id:
 
 ````
 
-Example playbook: 
+Example playbook:
 See [Client Profile examples/tests](test-test/solace_get_client_profiles/playbook.yml).
 
 ---

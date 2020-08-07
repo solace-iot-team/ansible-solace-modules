@@ -37,57 +37,33 @@ DOCUMENTATION = '''
 ---
 module: solace_subscription
 
-short_description: Configure a subscription object on a queue.
+version_added: "2.9.10"
+
+short_description: Configure a Subscription Object on a Queue.
 
 description:
-  - "Allows addition, removal and configuration of subscription objects on a queue."
-  - "Reference: https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/queue/createMsgVpnQueueSubscription."
+- "Configure a Subscription Object on a Queue.. Allows addition, removal and configuration of subscription objects on a queue."
+
+notes:
+- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/queue/createMsgVpnQueueSubscription)."
 
 options:
   name:
     description: The subscription topic. Maps to 'subscriptionTopic' in the API.
     required: true
+    type: str
+    aliases: [topic, subscription_topic]
   queue:
     description: The queue. Maps to 'queueName' in the API.
     required: true
-  settings:
-    description: JSON dictionary of additional configuration, see Reference documentation.
-    required: false
-  state:
-    description: Target state. [present|absent].
-    required: false
-    default: present
-  host:
-    description: Hostname of Solace Broker.
-    required: false
-    default: "localhost"
-  port:
-    description: Management port of Solace Broker.
-    required: false
-    default: 8080
-  msg_vpn:
-    description: The message vpn.
-    required: true
-  secure_connection:
-    description: If true, use https rather than http for querying.
-    required: false
-    default: false
-  username:
-    description: Administrator username for Solace Broker.
-    required: false
-    default: "admin"
-  password:
-    description: Administrator password for Solace Broker.
-    required: false
-    default: "admin"
-  timeout:
-    description: Connection timeout in seconds for the http request.
-    required: false
-    default: 1
-  x_broker:
-    description: Custom HTTP header with the broker virtual router id, if using a SEMPv2 Proxy/agent infrastructure.
-    required: false
+    type: str
+    aliases: [queue_name]
 
+extends_documentation_fragment:
+- solace.broker
+- solace.vpn
+- solace.settings
+- solace.state
 
 author:
   - Mark Street (mkst@protonmail.com)
@@ -134,35 +110,30 @@ class SolaceSubscriptionTask(su.SolaceTask):
         return [self.module.params['msg_vpn'], self.module.params['queue']]
 
     def get_func(self, solace_config, vpn, queue, lookup_item_value):
-        """Pull configuration for all Subscriptions associated with a given VPN and Queue"""
         # GET /msgVpns/{msgVpnName}/queues/{queueName}/subscriptions/{subscriptionTopic}
         path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.QUEUES, queue, su.SUBSCRIPTIONS, lookup_item_value]
         return su.get_configuration(solace_config, path_array, self.LOOKUP_ITEM_KEY)
 
     def create_func(self, solace_config, vpn, queue, topic, settings=None):
-        """Create a Subscription for a Topic/Endpoint on a Queue"""
         # POST /msgVpns/{msgVpnName}/queues/{queueName}/subscriptions
         defaults = {}
         mandatory = {
-            'subscriptionTopic': topic
+            self.LOOKUP_ITEM_KEY: topic
         }
         data = su.merge_dicts(defaults, mandatory, settings)
         path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.QUEUES, queue, su.SUBSCRIPTIONS]
         return su.make_post_request(solace_config, path_array, data)
 
     def delete_func(self, solace_config, vpn, queue, lookup_item_value):
-        """Delete a Subscription"""
         # DELETE /msgVpns/{msgVpnName}/queues/{queueName}/subscriptions/{subscriptionTopic}
         path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.QUEUES, queue, su.SUBSCRIPTIONS, lookup_item_value]
         return su.make_delete_request(solace_config, path_array)
 
 
 def run_module():
-    """Entrypoint to module"""
-
-    """Compose module arguments"""
     module_args = dict(
-        queue=dict(type='str', required=True),
+        name=dict(type='str', required=True, aliases=['topic', 'subscription_topic']),
+        queue=dict(type='str', required=True, aliases=['queue_name']),
     )
     arg_spec = su.arg_spec_broker()
     arg_spec.update(su.arg_spec_vpn())
@@ -182,7 +153,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 

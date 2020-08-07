@@ -3,13 +3,11 @@ version: '3.3'
 
 services:
   primary:
-    #container_name: pubSubStandardSingleNode
     container_name: "${brokerDockerContainerName}"
-    #image: solace/solace-pubsub-standard:latest
     image: "${brokerDockerImage}"
     shm_size: 1g
     ulimits:
-      core: 1
+      core: 2
       nofile:
         soft: 2448
         hard: 38048
@@ -26,9 +24,9 @@ services:
       #Web transport over TLS
       #- '443:443'
       #SEMP over TLS
-      - '943:943'
+      #- '1943:1943'
       #MQTT Default VPN
-      - '1883:1883'
+      #- '1883:1883'
       #AMQP Default VPN over TLS
       #- '5671:5671'
       #AMQP Default VPN
@@ -42,16 +40,21 @@ services:
       #SEMP / PubSub+ Manager
       - '8080:8080'
       #REST Default VPN
-      - '9000:9000'
+      #- '9000:9000'
       #REST Default VPN over TLS
       #- '9443:9443'
       #SMF
       - '55555:55555'
       #SMF Compressed
-      #- '55003:55003'
+      - '55003:55003'
       #SMF over TLS
-      #- '55443:55443'
+      - '55443:55443'
     environment:
       - username_admin_globalaccesslevel=admin
       - username_admin_password=admin
       - system_scaling_maxconnectioncount=100
+      #- routername=ansible-solace__test
+
+
+###
+# The End.

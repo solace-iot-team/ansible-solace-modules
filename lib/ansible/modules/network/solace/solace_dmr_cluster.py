@@ -37,51 +37,27 @@ DOCUMENTATION = '''
 ---
 module: solace_dmr_cluster
 
-short_description: Configure DMR cluster objects.
+version_added: "2.9.10"
+
+short_description: Configure DMR Cluster Objects.
 
 description:
-  - "Allows addition, removal and configuration of DMR cluster objects."
-  - "Reference: https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/dmrCluster."
+- "Configure DMR Cluster Objects. Allows addition, removal and configuration of DMR cluster objects in an idempotent manner."
+
+notes:
+- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/dmrCluster)."
 
 options:
   name:
     description: Name of the DMR cluster. Maps to 'dmrClusterName' in the API.
     required: true
-  settings:
-    description: JSON dictionary of additional configuration, see Reference documentation.
-    required: false
-  state:
-    description: Target state. [present|absent].
-    required: false
-    default: present
-  host:
-    description: Hostname of Solace Broker.
-    required: false
-    default: "localhost"
-  port:
-    description: Management port of Solace Broker.
-    required: false
-    default: 8080
-  secure_connection:
-    description: If true, use https rather than http for querying.
-    required: false
-    default: false
-  username:
-    description: Administrator username for Solace Broker.
-    required: false
-    default: "admin"
-  password:
-    description: Administrator password for Solace Broker.
-    required: false
-    default: "admin"
-  timeout:
-    description: Connection timeout in seconds for the http request.
-    required: false
-    default: 1
-  x_broker:
-    description: Custom HTTP header with the broker virtual router id, if using a SEMPv2 Proxy/agent infrastructure.
-    required: false
+    type: str
 
+extends_documentation_fragment:
+- solace.broker
+- solace.vpn
+- solace.settings
+- solace.state
 
 author:
   - Mark Street (mkst@protonmail.com)
@@ -117,6 +93,11 @@ response:
 class SolaceDMRClusterTask(su.SolaceTask):
 
     LOOKUP_ITEM_KEY = 'dmrClusterName'
+    WHITELIST_KEYS = ['authenticationBasicPassword',
+                      'authenticationClientCertPassword']
+    REQUIRED_TOGETHER_KEYS = [
+        ['authenticationClientCertPassword', 'authenticationClientCertContent']
+    ]
 
     def __init__(self, module):
         su.SolaceTask.__init__(self, module)
@@ -133,7 +114,6 @@ class SolaceDMRClusterTask(su.SolaceTask):
         return su.get_configuration(solace_config, path_array, self.LOOKUP_ITEM_KEY)
 
     def create_func(self, solace_config, dmr, settings=None):
-        """Create a DMR Cluster"""
         defaults = {
             'enabled': True,
             'authenticationBasicPassword': solace_config.vmr_auth[1]
@@ -155,23 +135,18 @@ class SolaceDMRClusterTask(su.SolaceTask):
 
 
 def run_module():
-    """Entrypoint to module"""
+    """Entrypoint to module."""
     module_args = dict(
-        name=dict(type='str', required=True),
-        host=dict(type='str', default='localhost'),
-        port=dict(type='int', default=8080),
-        secure_connection=dict(type='bool', default=False),
-        username=dict(type='str', default='admin'),
-        password=dict(type='str', default='admin', no_log=True),
-        settings=dict(type='dict', require=False),
-        state=dict(default='present', choices=['absent', 'present']),
-        timeout=dict(default='1', require=False),
-        x_broker=dict(type='str', default='')
-
+        name=dict(type='str', required=True)
     )
+    arg_spec = su.arg_spec_broker()
+    arg_spec.update(su.arg_spec_vpn())
+    arg_spec.update(su.arg_spec_crud())
+    # module_args override standard arg_specs
+    arg_spec.update(module_args)
 
     module = AnsibleModule(
-        argument_spec=module_args,
+        argument_spec=arg_spec,
         supports_check_mode=True
     )
 
@@ -182,7 +157,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 

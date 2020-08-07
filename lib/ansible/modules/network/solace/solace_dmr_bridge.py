@@ -37,54 +37,27 @@ DOCUMENTATION = '''
 ---
 module: solace_dmr_bridge
 
-short_description: Configure a DMR bridge object on a message vpn.
+version_added: "2.9.10"
+
+short_description: Configure a DMR Bridge Object.
 
 description:
-  - "Allows addition, removal and configuration of DMR brige objects in an idempotent manner."
-  - "Reference: https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/dmrBridge."
+- "Configure a DMR Bridge Object. Allows addition, removal and configuration of DMR brige objects in an idempotent manner."
+
+notes:
+- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/dmrBridge)."
 
 options:
   name:
     description: Name of the DMR bridge object. Maps to 'remoteNodeName' in the API.
     required: true
-  settings:
-    description: JSON dictionary of additional configuration, see Reference documentation.
-    required: false
-  state:
-    description: Target state. [present|absent].
-    required: false
-    default: present
-  host:
-    description: Hostname of Solace Broker.
-    required: false
-    default: "localhost"
-  port:
-    description: Management port of Solace Broker.
-    required: false
-    default: 8080
-  msg_vpn:
-    description: The message vpn.
-    required: true
-  secure_connection:
-    description: If true, use https rather than http for querying.
-    required: false
-    default: false
-  username:
-    description: Administrator username for Solace Broker.
-    required: false
-    default: "admin"
-  password:
-    description: Administrator password for Solace Broker.
-    required: false
-    default: "admin"
-  timeout:
-    description: Connection timeout in seconds for the http request.
-    required: false
-    default: 1
-  x_broker:
-    description: Custom HTTP header with the broker virtual router id, if using a SEMPv2 Proxy/agent infrastructure.
-    required: false
+    type: str
 
+extends_documentation_fragment:
+- solace.broker
+- solace.vpn
+- solace.settings
+- solace.state
 
 author:
   - Mark Street (mkst@protonmail.com)

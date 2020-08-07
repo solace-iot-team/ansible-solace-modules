@@ -1,5 +1,56 @@
 # Release Notes
 
+## Version: 0.6.0
+
+Release Purpose: Bridge Setup: local <-> Solace Cloud.
+
+### Versions
+|SEMP API Versions|Ansible Version| Python Version|
+|--|--|---|
+|2.13 to 2.17 | >=2.9.10   | >= 3.6  |
+
+### Modules
+    new:
+      - solace_get_bridges
+      - solace_get_bridge_remote_vpns
+      - solace_get_bridge_remote_subscriptions
+      - solace_get_available
+
+    updated:
+      - solace_bridge_remote_vpn - update: added support for optional parameter: remoteMsgVpnInterface
+      - solace_get_* - update: monitor api added
+        - solace_get_client_profiles
+        - solace_get_client_usernames
+        - solace_get_mqtt_session_subscriptions
+        - solace_get_mqtt_session
+        - solace_get_queues
+
+    gather solace facts / getting solace facts:
+        - solace_gather_facts: new, was previously: solace_get_facts
+            - about api - as before
+            - service - retrieves the service info. supports solace cloud & brokers
+            - virtual router - retrieves virtual router from brokers via SEMP v1
+        - solace_get_facts:
+            - new
+            - convenience functions to retrieve facts gathered by solace_gather_facts
+            - retrieve facts from ansible_facts.solace
+              - by field name
+              - by convenience function
+### Framework
+    - added monitor api option for all solace_get_* modules
+    - added support for SEMP V1 calls and XML return parsing
+    - added graceful handling of import errors
+    - added check of python version >= 3.6
+### Tests
+    - solace_bridges - new
+    - solace_facts - new
+    - solace_get_* - update: added monitor api call
+### Test Framework
+    - refactored to be agnostic of directory
+    - created categories of tests: 1-broker, 2-brokers, general
+### Other
+    - new python module required: xmltodict>=0.12.0
+
 ## Version: 0.5.0
 ### Modules
     new:

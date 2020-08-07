@@ -42,8 +42,11 @@ version_added: '2.9.10'
 short_description: Get a list of MQTT Session Subscription Objects
 
 description:
-- "Get a list of MQTT Session Subscription Objects. Retrieves all objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
-- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/mqttSession/getMsgVpnMqttSessionSubscriptions)."
+- "Get a list of MQTT Session Subscription Objects."
+
+notes:
+- "Reference Config: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/mqttSession/getMsgVpnMqttSessionSubscriptions)."
+- "Reference Monitor: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/monitor/index.html#/mqttSession/getMsgVpnMqttSessionSubscriptions)."
 
 options:
   mqtt_session_client_id:
@@ -56,7 +59,7 @@ extends_documentation_fragment:
 - solace.broker
 - solace.vpn
 - solace.virtual_router
-- solace.query
+- solace.get_list
 
 seealso:
 - module: solace_mqtt_session_subscription
@@ -66,6 +69,9 @@ author:
 '''
 
 EXAMPLES = '''
+
+# Config:
+
     - name: Get subscriptions
       solace_get_mqtt_session_subscriptions:
         client_id: "{{ mqttSessionClientId }}"
@@ -90,6 +96,9 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
+
+Config API:
+
 result_list:
     description: The list of objects found containing requested fields.
     returned: on success
@@ -107,6 +116,30 @@ result_list:
             "mqttSessionVirtualRouter": "primary",
             "subscriptionQos": 1,
             "subscriptionTopic": "ansible-solace/test/__4__/topic/subscription/3/>"
+        }
+    ]
+
+Monitor API:
+
+result_list:
+    description: The list of objects found containing requested fields.
+    returned: on success
+    type: list
+    elements: complex
+    sample: [
+        {
+            "mqttSessionClientId": "ansible-solace_test_mqtt__3__",
+            "mqttSessionVirtualRouter": "primary",
+            "msgVpnName": "ansible-test",
+            "subscriptionQos": 1,
+            "subscriptionTopic": "ansible-solace/test/__3__/topic/subscription/1/>"
+        },
+        {
+            "mqttSessionClientId": "ansible-solace_test_mqtt__3__",
+            "mqttSessionVirtualRouter": "primary",
+            "msgVpnName": "ansible-test",
+            "subscriptionQos": 1,
+            "subscriptionTopic": "ansible-solace/test/__3__/topic/subscription/2/>"
         }
     ]
 
@@ -132,29 +165,19 @@ class SolaceGetMqttSessionSubscritionsTask(su.SolaceTask):
 
         uri_ext = ','.join([client_id, virtual_router])
 
-        path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.MQTT_SESSIONS, uri_ext, su.MQTT_SESSION_SUBSCRIPTIONS]
+        path_array = [su.MSG_VPNS, vpn, su.MQTT_SESSIONS, uri_ext, su.MQTT_SESSION_SUBSCRIPTIONS]
 
-        query_params = self.module.params['query_params']
-        ok, resp = su.get_list(self.solace_config, path_array, query_params)
-        if ok:
-            queue_list = resp
-        else:
-            return False, resp
-
-        return True, queue_list
+        return self.execute_get_list(path_array)
 
 
 def run_module():
-    """Entrypoint to module"""
-
-    """Compose module arguments"""
     module_args = dict(
         mqtt_session_client_id=dict(type='str', aliases=['client_id', 'client'], required=True),
     )
     arg_spec = su.arg_spec_broker()
     arg_spec.update(su.arg_spec_vpn())
     arg_spec.update(su.arg_spec_virtual_router())
-    arg_spec.update(su.arg_spec_query())
+    arg_spec.update(su.arg_spec_get_list())
     # module_args override standard arg_specs
     arg_spec.update(module_args)
 
@@ -178,7 +201,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 

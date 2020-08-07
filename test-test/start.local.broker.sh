@@ -24,40 +24,15 @@
 # ---------------------------------------------------------------------------------------------
 
 clear
-
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 source $SCRIPT_PATH/lib/functions.sh
 
-brokerDockerImageLatest="solace/solace-pubsub-standard:latest"
-dockerComposeYmlFile="$SCRIPT_PATH/lib/PubSubStandard_singleNode.yml"
-
-brokerDockerImage=$(chooseBrokerDockerImage "$SCRIPT_PATH/lib/brokerDockerImages.json")
+brokerDockerImagesFile="$SCRIPT_PATH/lib/brokerDockerImages.json"
+brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImagesFile")
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-export brokerDockerImage
-export brokerDockerContainerName="pubSubStandardSingleNode"
-
-echo; echo "##############################################################################################################"
-echo "creating container: $brokerDockerContainerName"
-echo "image: $brokerDockerImage"
-echo
-
-# remove container first
-docker rm -f "$brokerDockerContainerName"
-if [ "$brokerDockerImage" == "$brokerDockerImageLatest" ]; then
-  # make sure we are pulling the latest
-  docker rmi -f $brokerDockerImageLatest
-fi
-# if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-docker-compose -f $dockerComposeYmlFile up -d
+$SCRIPT_PATH/lib/_start.local.broker.sh $brokerDockerImage
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-echo
-
-docker ps -a
-
-echo; echo "Done."; echo
 
 ###
 # The End.

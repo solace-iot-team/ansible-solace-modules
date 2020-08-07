@@ -30,7 +30,7 @@ with open("pypi/README.md", "r") as fh:
 
 setuptools.setup(
     name="ansible-solace",
-    version="0.5.0",
+    version="0.6.0",
     author="Solace Corporation",
     author_email="ricardo.gomez-ulmke@solace.com",
     description="Ansible modules to configure Solace PubSub+ event brokers with SEMP(v2).",
@@ -58,7 +58,8 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        'requests>=2.24.0'
+        'requests>=2.24.0',
+        'xmltodict>=0.12.0'
     ],
     keywords='solace sempv2 ansible pubsub+'
 )

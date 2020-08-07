@@ -83,7 +83,7 @@ options:
     description: The API Token.
     notes:
     - Generate using Solace Cloud console with the appropriate permissions for the operations you want to enable.
-    - Either both (solace_cloud_api_token AND solace_cloud_service_id) are provided or none.
+    - Either both (solace_cloud_api_token AND solace_cloud_service_id) must be provided or none.
     type: str
     required: false
     default: None
@@ -91,7 +91,7 @@ options:
     description: The service id in Solace Cloud.
     notes:
     - Click on the service in Solace Cloud - the service id is in the URL.
-    - Either both (solace_cloud_api_token AND solace_cloud_service_id) are provided or none.
+    - Either both (solace_cloud_api_token AND solace_cloud_service_id) must be provided or none.
     type: str
     required: false
     default: None
@@ -136,8 +136,20 @@ options:
       - absent
 '''
 
-    QUERY = r'''
+    GET_LIST = r'''
+description:
+- "Implements the config and monitor API."
+- "Retrieves all objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
+
 options:
+  api:
+   description: The API the query should run against.
+   required: false
+   type: str
+   default: config
+   choices:
+     - config
+     - monitor
   query_params:
     description: The query parameters.
     required: false

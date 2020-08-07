@@ -1,0 +1,98 @@
+# ---------------------------------------------------------------------------------------------
+# MIT License
+#
+# Copyright (c) 2020, Solace Corporation, Ricardo Gomez-Ulmke (ricardo.gomez-ulmke@solace.com)
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# ---------------------------------------------------------------------------------------------
+
+-
+  name: "solace_client_profile: test exceptions."
+  hosts: "{{ brokers }}"
+  gather_facts: no
+  any_errors_fatal: true
+  module_defaults:
+    solace_client_profile:
+      host: "{{ sempv2_host }}"
+      port: "{{ sempv2_port }}"
+      secure_connection: "{{ sempv2_is_secure_connection }}"
+      username: "{{ sempv2_username }}"
+      password: "{{ sempv2_password }}"
+      timeout: "{{ sempv2_timeout }}"
+      msg_vpn: "{{ vpn }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
+
+
+  tasks:
+
+    - name: Print Host Meta
+      debug:
+        msg:
+          - "host: {{ inventory_hostname }}"
+          - "account: {{ meta.account | default('unknown') }}"
+          - "service: {{ meta.service | default('unknown') }}"
+
+    - name: Client Profile - Wrong Params - 1
+      solace_client_profile:
+        solace_cloud_api_token: "xxx"
+        solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
+        name: "test_ansible_solace"
+        state: present
+      register: result
+      failed_when: result.module_stderr is defined
+
+    - name: Client Profile - Wrong Params - 2
+      solace_client_profile:
+        solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+        solace_cloud_service_id: "xxx"
+        name: "test_ansible_solace"
+        state: present
+      register: result
+      failed_when: result.module_stderr is defined
+
+    - name: Client Profile - Wrong Params - 3
+      solace_client_profile:
+        solace_cloud_api_token: "{{ omit }}"
+        solace_cloud_service_id: "xxx"
+        name: "test_ansible_solace"
+        state: present
+      register: result
+      failed_when: result.module_stderr is defined
+
+    - name: Client Profile - Wrong Params - 4
+      solace_client_profile:
+        solace_cloud_api_token: "xxx"
+        solace_cloud_service_id: "{{ omit }}"
+        name: "test_ansible_solace"
+        state: present
+      register: result
+      failed_when: result.module_stderr is defined
+
+    - name: Client Profile - Wrong Params - 5
+      solace_client_profile:
+        solace_cloud_api_token: "{{ omit }}"
+        solace_cloud_service_id: "{{ omit }}"
+        name: "test_ansible_solace"
+        state: present
+      register: result
+      failed_when: result.module_stderr is defined
+
+###
+# The End.
