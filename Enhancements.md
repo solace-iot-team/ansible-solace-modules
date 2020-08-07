@@ -17,8 +17,6 @@
 
 Create remaining *_get_* module for each module.
 
-Examples: `solace_get_queues`, `solace_get_client_usernames`
-
 ### Update
 
   * [solace_rdp_rest_consumer_trusted_cn](https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/restDeliveryPoint/getMsgVpnRestDeliveryPointRestConsumerTlsTrustedCommonNames)
