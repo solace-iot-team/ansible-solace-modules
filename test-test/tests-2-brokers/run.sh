@@ -51,7 +51,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
   brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
   localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-  cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+  cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
 
   brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImagesFile")
   if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi

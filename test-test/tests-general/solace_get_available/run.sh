@@ -48,7 +48,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
     brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
     # select inventory
     localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-    cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+    cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
     # select broker(s) inside inventory
     export brokers="all"
     # playbook

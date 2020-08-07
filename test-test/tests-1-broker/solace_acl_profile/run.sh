@@ -44,7 +44,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
     export ANSIBLE_SOLACE_ENABLE_LOGGING=true
     # select inventory
     export AS_TEST_BROKER_INVENTORY="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-    # export AS_TEST_BROKER_INVENTORY="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+    #export AS_TEST_BROKER_INVENTORY=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
     # select broker(s) inside inventory
     export AS_TEST_BROKERS="all"
   # END SELECT

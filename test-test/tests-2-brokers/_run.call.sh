@@ -29,7 +29,7 @@ SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 # Configure
 brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
 localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
+cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
 
 ansibleSolaceTests=(
   "solace_facts"

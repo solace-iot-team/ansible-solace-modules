@@ -23,6 +23,19 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
+function assertFile() {
+  if [[ $# -lt 1 ]]; then
+      echo "Usage: fileVar='\$(assertFile {full-path/filename})'" 1>&2
+      return 1
+  fi
+  local file=$1
+  if [[ ! -f "$file" ]]; then
+    echo ">>> ERR: file='$file' does not exist. aborting" > /dev/tty
+    return 1;
+  fi
+  echo $file
+  return 0
+}
 function getCloudBrokerInventoryMeta() {
   if [[ $# -lt 2 ]]; then
       echo "Usage: metaJson='\$(getCloudBrokerInventoryMeta {full-path/inventory.json})'" 1>&2
@@ -97,7 +110,7 @@ function wait4BrokerStart() {
    counter=$(( $counter + 1 ))
   done;
   echo  > /dev/tty;
-  echo  > /dev/tty 
+  echo  > /dev/tty
 }
 
 # if arg exists, return it
