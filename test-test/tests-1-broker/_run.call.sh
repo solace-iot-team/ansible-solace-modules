@@ -84,6 +84,7 @@ for brokerDockerImage in ${brokerDockerImages[@]}; do
       runScript="$SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $brokerInventoryFile"
 
       echo; echo "##############################################################################################################"
+      echo "# script: $SCRIPT_PATH"
       echo "# test: $ansibleSolaceTest"
       echo "# broker: local"
       echo "# image: $brokerDockerImage"
