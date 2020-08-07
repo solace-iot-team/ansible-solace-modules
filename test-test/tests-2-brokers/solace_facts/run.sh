@@ -97,7 +97,7 @@ for playbook in ${playbooks[@]}; do
                     --extra-vars "brokers=$brokers" \
                     -vvv
 
-  if [[ $? != 0 ]]; then echo ">>> ERR. aborting."; exit 1 fi
+  if [[ $? != 0 ]]; then echo ">>> ERR. aborting."; exit 1; fi
 
 done
 
