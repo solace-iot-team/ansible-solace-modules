@@ -104,6 +104,7 @@ MQTT_SESSION_SUBSCRIPTIONS = 'subscriptions'
 # initialize logging
 ENABLE_LOGGING = False  # False to disable
 enableLoggingEnvVal = os.getenv('ANSIBLE_SOLACE_ENABLE_LOGGING')
+loggingPathEnvVal = os.getenv('ANSIBLE_SOLACE_LOG_PATH')
 if enableLoggingEnvVal is not None and enableLoggingEnvVal != '':
     try:
         ENABLE_LOGGING = bool(strtobool(enableLoggingEnvVal))
@@ -111,7 +112,9 @@ if enableLoggingEnvVal is not None and enableLoggingEnvVal != '':
         raise ValueError("failed: invalid value for env var: 'ANSIBLE_SOLACE_ENABLE_LOGGING={}'. use 'true' or 'false' instead.".format(enableLoggingEnvVal))
 
 if ENABLE_LOGGING:
-    logging.basicConfig(filename='ansible-solace.log',
+    if loggingPathEnvVal is not None and loggingPathEnvVal != '':
+        logFile = loggingPathEnvVal
+    logging.basicConfig(filename=logFile,
                         level=logging.DEBUG,
                         format='%(asctime)s - %(name)s - %(levelname)s - %(funcName)s(): %(message)s')
     logging.info('Module start #############################################################################################')
