@@ -143,7 +143,7 @@ class SolaceGatherFactsTask(su.SolaceTask):
         if HAS_IMPORT_ERROR:
             exceptiondata = traceback.format_exc().splitlines()
             exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
-            module.fail_json(msg="failed: Missing module: %s" % exceptionarray[0], exception=IMPORT_ERR_TRACEBACK)
+            module.fail_json(msg="Missing module: %s" % exceptionarray[0], rc=1, exception=IMPORT_ERR_TRACEBACK)
         su.SolaceTask.__init__(self, module)
         return
 

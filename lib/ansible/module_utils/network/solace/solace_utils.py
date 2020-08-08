@@ -51,8 +51,8 @@ except ImportError:
 _PY3_MIN = sys.version_info[:2] >= (3, 6)
 if not _PY3_MIN:
     print(
-        '\n{"failed": true, '
-        '"msg": "failed: ansible-solace requires a minimum of Python3 version 3.6. Current version: %s. Hint: set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3"}' % (''.join(sys.version.splitlines()))
+        '\n{"failed": true, "rc": 1, "msg_hint": "Set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3", '
+        '"msg": "ansible-solace requires a minimum of Python3 version 3.6. Current version: %s."}' % (''.join(sys.version.splitlines()))
     )
     sys.exit(1)
 
@@ -104,6 +104,7 @@ MQTT_SESSION_SUBSCRIPTIONS = 'subscriptions'
 # initialize logging
 ENABLE_LOGGING = False  # False to disable
 enableLoggingEnvVal = os.getenv('ANSIBLE_SOLACE_ENABLE_LOGGING')
+loggingPathEnvVal = os.getenv('ANSIBLE_SOLACE_LOG_PATH')
 if enableLoggingEnvVal is not None and enableLoggingEnvVal != '':
     try:
         ENABLE_LOGGING = bool(strtobool(enableLoggingEnvVal))
@@ -111,7 +112,9 @@ if enableLoggingEnvVal is not None and enableLoggingEnvVal != '':
         raise ValueError("failed: invalid value for env var: 'ANSIBLE_SOLACE_ENABLE_LOGGING={}'. use 'true' or 'false' instead.".format(enableLoggingEnvVal))
 
 if ENABLE_LOGGING:
-    logging.basicConfig(filename='ansible-solace.log',
+    if loggingPathEnvVal is not None and loggingPathEnvVal != '':
+        logFile = loggingPathEnvVal
+    logging.basicConfig(filename=logFile,
                         level=logging.DEBUG,
                         format='%(asctime)s - %(name)s - %(levelname)s - %(funcName)s(): %(message)s')
     logging.info('Module start #############################################################################################')
@@ -145,7 +148,7 @@ class SolaceTask:
         if HAS_IMPORT_ERROR:
             exceptiondata = traceback.format_exc().splitlines()
             exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
-            module.fail_json(msg="failed: Missing module: %s" % exceptionarray[0], exception=IMPORT_ERR_TRACEBACK)
+            module.fail_json(msg="Missing module: %s" % exceptionarray[0], rc=1, exception=IMPORT_ERR_TRACEBACK)
 
         self.module = module
         solace_cloud_api_token = self.module.params.get('solace_cloud_api_token', None)
@@ -154,8 +157,8 @@ class SolaceTask:
         ok = ((solace_cloud_api_token and solace_cloud_service_id)
               or (not solace_cloud_api_token and not solace_cloud_service_id))
         if not ok:
-            result = dict(changed=False, response=dict())
-            msg = "failed: must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
+            result = dict(changed=False, rc=1)
+            msg = "must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
             self.module.fail_json(msg=msg, **result)
 
         if ok and solace_cloud_api_token and solace_cloud_service_id:

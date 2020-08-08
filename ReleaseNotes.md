@@ -1,5 +1,14 @@
 # Release Notes
 
+## Version: 0.6.1
+
+Release Purpose: Maintenance Release & Links to `ansible-solace-samples`
+
+    - pypi home page: references samples github project
+    - logging: new env var: ANSIBLE_SOLACE_LOG_PATH: the log filename
+    - README now points to ansible-solace-samples
+    - examples: marked as deprecated
+
 ## Version: 0.6.0
 
 Release Purpose: Bridge Setup: local <-> Solace Cloud.
