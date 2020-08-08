@@ -51,8 +51,8 @@ except ImportError:
 _PY3_MIN = sys.version_info[:2] >= (3, 6)
 if not _PY3_MIN:
     print(
-        '\n{"failed": true, '
-        '"msg": "failed: ansible-solace requires a minimum of Python3 version 3.6. Current version: %s. Hint: set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3"}' % (''.join(sys.version.splitlines()))
+        '\n{"failed": true, "rc": 1, '
+        '"msg": "ansible-solace requires a minimum of Python3 version 3.6. Current version: %s. Hint: set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3"}' % (''.join(sys.version.splitlines()))
     )
     sys.exit(1)
 
@@ -145,7 +145,7 @@ class SolaceTask:
         if HAS_IMPORT_ERROR:
             exceptiondata = traceback.format_exc().splitlines()
             exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
-            module.fail_json(msg="failed: Missing module: %s" % exceptionarray[0], exception=IMPORT_ERR_TRACEBACK)
+            module.fail_json(msg="Missing module: %s" % exceptionarray[0], rc=1, exception=IMPORT_ERR_TRACEBACK)
 
         self.module = module
         solace_cloud_api_token = self.module.params.get('solace_cloud_api_token', None)
@@ -154,8 +154,8 @@ class SolaceTask:
         ok = ((solace_cloud_api_token and solace_cloud_service_id)
               or (not solace_cloud_api_token and not solace_cloud_service_id))
         if not ok:
-            result = dict(changed=False, response=dict())
-            msg = "failed: must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
+            result = dict(changed=False, rc=1)
+            msg = "must provide either both or none for Solace Cloud: solace_cloud_api_token={}, solace_cloud_service_id={}.".format(solace_cloud_api_token, solace_cloud_service_id)
             self.module.fail_json(msg=msg, **result)
 
         if ok and solace_cloud_api_token and solace_cloud_service_id:
