@@ -31,6 +31,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'supported_by': 'community'}
 
 import ansible.module_utils.network.solace.solace_utils as su
+import ansible.module_utils.network.solace.solace_common as sc
 from ansible.module_utils.basic import AnsibleModule
 import traceback
 
@@ -131,8 +132,8 @@ def make_get_request(solace_config, path_array):
                     headers={'x-broker-name': solace_config.x_broker},
                     params=None
         )
-        if su.ENABLE_LOGGING:
-            su.log_http_roundtrip(resp)
+        if sc.ENABLE_LOGGING:
+            sc.log_http_roundtrip(resp)
         if resp.status_code != 200:
             return False, su.parse_bad_response(resp)
         return True, su.parse_good_response(resp)
