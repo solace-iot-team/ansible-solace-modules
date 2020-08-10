@@ -36,6 +36,7 @@ from ansible.module_utils.basic import AnsibleModule
 import traceback
 
 HAS_IMPORT_ERROR = False
+IMPORT_ERR_TRACEBACK = None
 try:
     import requests
 except ImportError:
@@ -105,10 +106,7 @@ samples:
 class SolaceGetAvailableTask(su.SolaceTask):
 
     def __init__(self, module):
-        if HAS_IMPORT_ERROR:
-            exceptiondata = traceback.format_exc().splitlines()
-            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
-            module.fail_json(msg="Missing module: %s" % exceptionarray[0], rc=1, exception=IMPORT_ERR_TRACEBACK)
+        sc.module_fail_on_import_error(module, HAS_IMPORT_ERROR, IMPORT_ERR_TRACEBACK)
         su.SolaceTask.__init__(self, module)
         return
 
