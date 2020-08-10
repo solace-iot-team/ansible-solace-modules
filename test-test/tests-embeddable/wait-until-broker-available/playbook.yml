@@ -43,7 +43,7 @@
     - name: "Test Imports / Version"
       solace_get_available:
       register: _result
-      failed_when: "_result.rc == 1"
+      failed_when: "_result.rc != 0"
 
     - name: "Pause Until Broker/Service available"
       solace_get_available:
