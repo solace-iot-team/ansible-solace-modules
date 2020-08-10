@@ -33,33 +33,21 @@ import traceback
 import logging
 import json
 import time
-import os
-import sys
-from distutils.util import strtobool
 
 HAS_IMPORT_ERROR = False
 try:
+    import ansible.module_utils.network.solace.solace_common as sc
     from ansible.errors import AnsibleError
-    from json.decoder import JSONDecodeError
     import requests
-    import xmltodict
 except ImportError:
     HAS_IMPORT_ERROR = True
     IMPORT_ERR_TRACEBACK = traceback.format_exc()
 
-# check python version
-_PY3_MIN = sys.version_info[:2] >= (3, 6)
-if not _PY3_MIN:
-    print(
-        '\n{"failed": true, "rc": 1, "msg_hint": "Set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3", '
-        '"msg": "ansible-solace requires a minimum of Python3 version 3.6. Current version: %s."}' % (''.join(sys.version.splitlines()))
-    )
-    sys.exit(1)
 
 """ Default Whitelist Keys """
 DEFAULT_WHITELIST_KEYS = ['password']
 
-""" Solace Cloud reources """
+""" Solace Cloud resources """
 SOLACE_CLOUD_API_SERVICES_BASE_PATH = 'https://api.solace.cloud/api/v0/services'
 SOLACE_CLOUD_REQUESTS = 'requests'
 SOLACE_CLOUD_CLIENT_PROFILE_REQUESTS = 'clientProfileRequests'
@@ -99,27 +87,6 @@ CERT_AUTHORITIES = 'certAuthorities'
 """ MQTT Sesion level reources """
 MQTT_SESSIONS = 'mqttSessions'
 MQTT_SESSION_SUBSCRIPTIONS = 'subscriptions'
-
-################################################################################################
-# initialize logging
-ENABLE_LOGGING = False  # False to disable
-enableLoggingEnvVal = os.getenv('ANSIBLE_SOLACE_ENABLE_LOGGING')
-loggingPathEnvVal = os.getenv('ANSIBLE_SOLACE_LOG_PATH')
-if enableLoggingEnvVal is not None and enableLoggingEnvVal != '':
-    try:
-        ENABLE_LOGGING = bool(strtobool(enableLoggingEnvVal))
-    except ValueError:
-        raise ValueError("failed: invalid value for env var: 'ANSIBLE_SOLACE_ENABLE_LOGGING={}'. use 'true' or 'false' instead.".format(enableLoggingEnvVal))
-
-if ENABLE_LOGGING:
-    if loggingPathEnvVal is not None and loggingPathEnvVal != '':
-        logFile = loggingPathEnvVal
-    logging.basicConfig(filename=logFile,
-                        level=logging.DEBUG,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(funcName)s(): %(message)s')
-    logging.info('Module start #############################################################################################')
-
-################################################################################################
 
 
 class SolaceConfig(object):
@@ -383,8 +350,8 @@ class SolaceTask:
                             params=None
                 )
 
-                if ENABLE_LOGGING:
-                    log_http_roundtrip(resp)
+                if sc.ENABLE_LOGGING:
+                    sc.log_http_roundtrip(resp)
 
                 if resp.status_code != 200:
                     return False, parse_bad_response(resp)
@@ -420,15 +387,15 @@ def arg_spec_broker():
         secure_connection=dict(type='bool', default=False),
         username=dict(type='str', default='admin'),
         password=dict(type='str', default='admin', no_log=True),
-        timeout=dict(type='int', default='10', require=False),
+        timeout=dict(type='int', default='10', required=False),
         x_broker=dict(type='str', default='')
     )
 
 
 def arg_spec_solace_cloud_config():
     return dict(
-        solace_cloud_api_token=dict(type='str', require=False, no_log=True, default=None),
-        solace_cloud_service_id=dict(type='str', require=False, default=None)
+        solace_cloud_api_token=dict(type='str', required=False, no_log=True, default=None),
+        solace_cloud_service_id=dict(type='str', required=False, default=None)
     )
 
 
@@ -446,13 +413,13 @@ def arg_spec_virtual_router():
 
 def arg_spec_settings():
     return dict(
-        settings=dict(type='dict', require=False)
+        settings=dict(type='dict', required=False)
     )
 
 
 def arg_spec_semp_version():
     return dict(
-        semp_version=dict(type='str', require=True)
+        semp_version=dict(type='str', required=True)
     )
 
 
@@ -479,7 +446,7 @@ def arg_spec_get_list():
     return dict(
         api=dict(type='str', default='config', choices=['config', 'monitor']),
         query_params=dict(type='dict',
-                          require=False,
+                          required=False,
                           options=dict(
                             select=dict(type='list', default=[], elements='str'),
                             where=dict(type='list', default=[], elements='str')
@@ -562,51 +529,6 @@ def get_configuration(solace_config, path_array, key):
 
 # request/response handling
 
-# data_dict = xmltodict.parse(xml_file.read())
-# json_data = json.dumps(data_dict)
-
-def log_http_roundtrip(resp):
-    if hasattr(resp.request, 'body') and resp.request.body:
-        try:
-            decoded_body = resp.request.body.decode()
-            request_body = json.loads(decoded_body)
-        except AttributeError:
-            request_body = resp.request.body
-    else:
-        request_body = "{}"
-
-    if resp.text:
-        try:
-            resp_body = json.loads(resp.text)
-        except JSONDecodeError:
-            # try XML parsing it
-            try:
-                resp_body = xmltodict.parse(resp.text)
-            except Exception:
-                # print as text at least
-                resp_body = resp.text
-    else:
-        resp_body = None
-
-    log = {
-        'request': {
-            'method': resp.request.method,
-            'url': resp.request.url,
-            'headers': dict(resp.request.headers),
-            'body': request_body
-        },
-        'response': {
-            'status_code': resp.status_code,
-            'reason': resp.reason,
-            'url': resp.url,
-            'headers': dict(resp.headers),
-            'body': resp_body
-        }
-    }
-    logging.debug("\n%s", json.dumps(log, indent=2))
-    return
-
-
 def _wait_solace_cloud_request_completed(solace_config, request_resp):
     # GET https://api.solace.cloud/api/v0/services/{paste-your-serviceId-here}/requests/{{requestId}}
     request_resp_body = json.loads(request_resp.text)
@@ -629,8 +551,8 @@ def _wait_solace_cloud_request_completed(solace_config, request_resp):
                         headers={'x-broker-name': solace_config.x_broker},
                         params=None
             )
-            if ENABLE_LOGGING:
-                log_http_roundtrip(resp)
+            if sc.ENABLE_LOGGING:
+                sc.log_http_roundtrip(resp)
             if resp.status_code != 200:
                 raise AnsibleError("GET request status error: {}".format(resp.status_code))
         except requests.exceptions.ConnectionError as e:
@@ -648,8 +570,8 @@ def _wait_solace_cloud_request_completed(solace_config, request_resp):
 
 
 def _parse_response(solace_config, resp):
-    if ENABLE_LOGGING:
-        log_http_roundtrip(resp)
+    if sc.ENABLE_LOGGING:
+        sc.log_http_roundtrip(resp)
     # Solace Cloud API returns 202: accepted if long running request
     if resp.status_code == 202 and is_broker_solace_cloud(solace_config):
         resp = _wait_solace_cloud_request_completed(solace_config, resp)
