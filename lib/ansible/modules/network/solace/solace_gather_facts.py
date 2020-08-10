@@ -171,7 +171,7 @@ class SolaceGatherFactsTask(su.SolaceTask):
         return True, about_info
 
     def _get_service_info_solace_cloud(self):
-        # https://api.solace.cloud/api/v0/services/{{serviceId}}
+        # GET https://api.solace.cloud/api/v0/services/{{serviceId}}
         path_array = [su.SOLACE_CLOUD_API_SERVICES_BASE_PATH, self.solace_config.solace_cloud_config['service_id']]
         return su.make_get_request(self.solace_config, path_array)
 
