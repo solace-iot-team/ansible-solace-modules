@@ -97,6 +97,22 @@ options:
     default: None
 '''
 
+    SOLACE_CLOUD_SERVICE_CONFIG = r'''
+options:
+  api_token:
+    description: The API Token.
+    notes:
+    - Generate using Solace Cloud console with the appropriate permissions for the operations you want to enable.
+    type: str
+    required: true
+    default: None
+  timeout:
+    description: Connection timeout in seconds for the http/s request.
+    required: false
+    default: 60
+    type: int
+'''
+
     VIRTUAL_ROUTER = r'''
 options:
   virtual_router:
