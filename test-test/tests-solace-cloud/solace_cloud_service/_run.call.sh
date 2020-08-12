@@ -29,7 +29,7 @@ source $AS_TEST_HOME/lib/functions.sh
 ##############################################################################################################################
 # Configure
 
-solaceCloudAccountsInventoryFile=$(assertFile "$AS_TEST_SCRIPT_PATH/lib/solace-cloud-accounts.inventory.yml") || exit
+solaceCloudAccountsInventoryFile=$(assertFile "$SCRIPT_PATH/lib/solace-cloud-accounts.inventory.yml") || exit
 solaceCloudAccounts="all"
 
 playbooks=(
