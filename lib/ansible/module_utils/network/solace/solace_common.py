@@ -28,6 +28,7 @@
 
 """Common functions."""
 
+import re
 import traceback
 import logging
 import json
@@ -44,18 +45,31 @@ except ImportError:
     HAS_IMPORT_ERROR = True
     IMPORT_ERR_TRACEBACK = traceback.format_exc()
 
+_SC_SYSTEM_ERR_RC = -1
 # check python version
 _PY3_MIN = sys.version_info[:2] >= (3, 6)
 if not _PY3_MIN:
     print(
-        '\n{"failed": true, "rc": 1, "msg_hint": "Set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3", '
-        '"msg": "ansible-solace requires a minimum of Python3 version 3.6. Current version: %s."}' % (''.join(sys.version.splitlines()))
+        '\n{"failed": true, "rc": %d, "msg_hint": "Set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3", '
+        '"msg": "ansible-solace requires a minimum of Python3 version 3.6. Current version: %s."}' % (_SC_SYSTEM_ERR_RC, ''.join(sys.version.splitlines()))
     )
     sys.exit(1)
 
 
+def module_fail_on_import_error(module, is_error, import_error_traceback=None):
+    if is_error:
+        if import_error_traceback is not None:
+            exceptiondata = import_error_traceback.splitlines()
+            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
+            module.fail_json(msg="Missing module: %s" % exceptionarray[0], rc=_SC_SYSTEM_ERR_RC, exception=import_error_traceback)
+        else:
+            module.fail_json(msg="Missing module: unknown", rc=_SC_SYSTEM_ERR_RC)
+    return
+
 ################################################################################################
 # initialize logging
+
+
 ENABLE_LOGGING = False  # False to disable
 enableLoggingEnvVal = os.getenv('ANSIBLE_SOLACE_ENABLE_LOGGING')
 loggingPathEnvVal = os.getenv('ANSIBLE_SOLACE_LOG_PATH')
@@ -127,6 +141,41 @@ if not HAS_IMPORT_ERROR:
         def __call__(self, r):
             r.headers["authorization"] = "Bearer " + self.token
             return r
+
+
+def type_conversion(d):
+    for k, i in d.items():
+        t = type(i)
+        if (t == str) and re.search(r'^[0-9]+$', i):
+            d[k] = int(i)
+        elif (t == str) and re.search(r'^[0-9]+\.[0-9]$', i):
+            d[k] = float(i)
+        elif t == dict:
+            d[k] = type_conversion(i)
+    return d
+
+
+def merge_dicts(*argv):
+    data = dict()
+    for arg in argv:
+        if arg:
+            data.update(arg)
+    return data
+
+
+def compose_path(path_array):
+    if not type(path_array) is list:
+        raise TypeError("argument 'path_array' is not an array but {}".format(type(path_array)))
+    # ensure elements are 'url encoded'
+    # except first one: SEMP_V2_CONFIG or SOLACE_CLOUD_API_SERVICES_BASE_PATH
+    paths = []
+    for i, path_elem in enumerate(path_array):
+        if i > 0:
+            paths.append(path_elem.replace('/', '%2F'))
+        else:
+            paths.append(path_elem)
+    return '/'.join(paths)
+
 
 ###
 # The End.
