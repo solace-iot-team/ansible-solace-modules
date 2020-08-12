@@ -80,7 +80,7 @@ ansible-playbook \
                   $playbook \
                   --extra-vars "brokers=$brokers" \
                   -vvv
-if [[ $? != 0 ]]; then echo ">>> ERR. aborting."; exit 1 fi
+if [[ $? != 0 ]]; then echo ">>> ERR. aborting."; exit 1; fi
 
 $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $localBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi

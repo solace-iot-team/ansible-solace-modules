@@ -57,6 +57,9 @@
         content: "{{ hostvars['local']['ansible_facts']['solace'] | to_nice_json }}"
         dest: ./hostvars.local.ansible_facts.json
 
+    # DEBUG
+    # - meta: end_play
+
     - name: "Save hostvars.solace-cloud-1 to ./hostvars.solace-cloud-1.json"
       local_action:
         module: copy
