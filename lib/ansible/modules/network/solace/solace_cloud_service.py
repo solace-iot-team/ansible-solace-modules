@@ -213,6 +213,10 @@ class SolaceCloudServiceTask(scu.SolaceCloudTask):
 
     def create_func(self, sc_config, lookup_item_key, lookup_item_value, settings=None):
         # POST https://api.solace.cloud/api/v0/services
+        if not settings:
+            fail_msg = "mandatory 'settings' missing or empty"
+            result = dict(changed=False, rc=1)
+            self.module.fail_json(msg="Create Service: " + fail_msg, **result)
         if lookup_item_key != self.LOOKUP_ITEM_KEY_NAME:
             raise ValueError("lookup_item_key='{}' expected, but received '{}. pls raise an issue.".format(self.LOOKUP_ITEM_KEY_NAME, lookup_item_key))
 

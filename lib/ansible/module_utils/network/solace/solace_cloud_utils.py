@@ -166,8 +166,8 @@ class SolaceCloudTask:
         else:
             if self.module.params['state'] == 'present':
                 if not self.module.check_mode:
+                    crud_args = self.crud_args()
                     if settings:
-                        crud_args = self.crud_args()
                         crud_args.append(settings)
                     ok, resp = self.create_func(self.sc_config, *crud_args)
                     if ok:
