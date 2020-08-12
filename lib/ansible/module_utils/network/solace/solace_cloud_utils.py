@@ -28,12 +28,11 @@
 
 """Collection of utility classes and functions to aid the solace_cloud_* modules."""
 
-import re
 import traceback
 import logging
 import json
-
 HAS_IMPORT_ERROR = False
+IMPORT_ERR_TRACEBACK = None
 try:
     import ansible.module_utils.network.solace.solace_common as sc
     import requests
@@ -41,16 +40,18 @@ except ImportError:
     HAS_IMPORT_ERROR = True
     IMPORT_ERR_TRACEBACK = traceback.format_exc()
 
-
 """ Solace Cloud resources """
-SOLACE_CLOUD_API_SERVICES_BASE_PATH = 'https://api.solace.cloud/api/v0/services'
+SOLACE_CLOUD_API_BASE_PATH = "https://api.solace.cloud/api/v0"
+SOLACE_CLOUD_API_DATA_CENTERS = SOLACE_CLOUD_API_BASE_PATH + "/datacenters"
+SOLACE_CLOUD_API_SERVICES_BASE_PATH = SOLACE_CLOUD_API_BASE_PATH + "/services"
+""" Default Whitelist Keys """
+DEFAULT_WHITELIST_KEYS = []  # Solace Cloud returns everything, including passwords
 
 
 class SolaceCloudConfig(object):
     def __init__(self,
                  api_token,
                  timeout):
-        self.url = SOLACE_CLOUD_API_SERVICES_BASE_PATH
         self.auth = sc.BearerAuth(api_token)
         self.timeout = float(timeout)
         return
@@ -59,11 +60,7 @@ class SolaceCloudConfig(object):
 class SolaceCloudTask:
 
     def __init__(self, module):
-        if HAS_IMPORT_ERROR:
-            exceptiondata = traceback.format_exc().splitlines()
-            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
-            module.fail_json(msg="Missing module: %s" % exceptionarray[0], rc=1, exception=IMPORT_ERR_TRACEBACK)
-
+        sc.module_fail_on_import_error(module, HAS_IMPORT_ERROR, IMPORT_ERR_TRACEBACK)
         self.module = module
         self.sc_config = SolaceCloudConfig(
             api_token=self.module.params['api_token'],
@@ -78,61 +75,99 @@ class SolaceCloudTask:
             rc=0,
             response=dict()
         )
-        crud_args = self.crud_args()
         settings = self.module.params['settings']
         if settings:
-            settings = _type_conversion(settings)
+            settings = sc.type_conversion(settings)
 
-        ok, resp = self.get_func(self.sc_config, *(self.get_args() + [self.lookup_item()]))
+        ok, resp = self.get_func(self.sc_config, *self.crud_args())
         if not ok:
             result['rc'] = 1
             self.module.fail_json(msg=resp, **result)
 
-        # any whitelist required?
+        current_configuration = resp
+        # whitelist of configuration items that are not returned by GET
+        whitelist = DEFAULT_WHITELIST_KEYS
+        whitelist.extend(self.get_whitelist_keys())
+        # keys that must come together
+        required_together_keys_list = self.get_required_together_keys()
 
-        existing_service = resp
-        if existing_service is not None:
+        if current_configuration is not None:
             if self.module.params['state'] == 'absent':
-                # if not self.module.check_mode:
-                #     ok, resp = self.delete_func(self.sc_config, *(self.get_args() + [self.lookup_item()]))
-                #     if not ok:
-                #         result['rc'] = 1
-                #         self.module.fail_json(msg=resp, **result)
-                result['rc'] = 1
-                result['msg_todo'] = "implement DELETE"
-                self.module.fail_json(msg=resp, **result)
+                if not self.module.check_mode:
+                    ok, resp = self.delete_func(self.sc_config, *self.crud_args())
+                    if not ok:
+                        result['rc'] = 1
+                        self.module.fail_json(msg=resp, **result)
+                    else:
+                        result['response'] = resp
                 result['changed'] = True
             else:
                 # state=present
-                # if not self.module.check_mode:
-                # get changes
-                # changed keys are those that exist in settings and don't match current settings
-                # check if any settings have changed
-                # if so, calculate delta
-                # call update_func if not in check_mode
-                # TODO: if no update exists:
-                #       raise error, user must delete & create themselves
-                # if not self.module.check_mode:
-                # delta_settings = {key: settings[key] for key in changed_keys}
-                # crud_args.append(delta_settings)
-                # ok, resp = self.update_func(self.solace_config, *crud_args)
-                # result['response'] = resp
-                # if not ok:
-                #     self.module.fail_json(msg=resp, **result)
-                result['rc'] = 1
-                result['msg_todo'] = "implement UPDATE"
-                self.module.fail_json(msg=resp, **result)
+                if settings and len(settings.keys()):
+                    # compare new settings against configuration
+                    current_settings = current_configuration
+                    bad_keys = [key for key in settings if key not in current_settings.keys()]
+                    # remove whitelist items from bad_keys
+                    bad_keys = [item for item in bad_keys if item not in whitelist]
+                    # removed keys
+                    removed_keys = [item for item in settings if item in whitelist]
+                    # fail if any unexpected settings found
+                    if len(bad_keys):
+                        msg = "invalid key(s) found in 'settings'"
+                        result['rc'] = 1
+                        result['response'] = dict(
+                            invalid_keys=', '.join(bad_keys),
+                            hint=[
+                                    "possible causes:",
+                                    "- wrong spelling or wrong key: check the Solace Cloud API reference documentation",
+                                    "- module's 'whitelist' isn't up to date: pls raise an issue"
+                                ],
+                            valid_keys=list(current_settings) + removed_keys
+                        )
+                        self.module.fail_json(msg=msg, **result)
+                    # changed keys are those that exist in settings and don't match current settings
+                    changed_keys = [x for x in settings if x in current_settings.keys()
+                                    and settings[x] != current_settings[x]]
+                    # add back in anything from the whitelist
+                    changed_keys = changed_keys + removed_keys
+                    # add any 'required together' keys
+                    for together_keys in required_together_keys_list:
+                        add_keys = [x for x in changed_keys if x in together_keys]
+                        if(add_keys):
+                            changed_keys += together_keys
+                    # remove duplicates
+                    changed_keys = list(dict.fromkeys(changed_keys))
+                    # check if user has provided all the keys
+                    missing_keys = []
+                    for key in changed_keys:
+                        if key not in settings:
+                            missing_keys += [key]
+                    if len(missing_keys):
+                        msg = "missing key(s) in 'settings': " + ', '.join(missing_keys)
+                        self.module.fail_json(msg=msg, **result)
 
-                result['changed'] = True
+                    if len(changed_keys):
+                        delta_settings = {key: settings[key] for key in changed_keys}
+                        crud_args = self.crud_args()
+                        crud_args.append(delta_settings)
+                        result['delta'] = delta_settings
+                        if not self.module.check_mode:
+                            ok, resp = self.update_func(self.sc_config, *crud_args)
+                            if not ok:
+                                result['rc'] = 1
+                                self.module.fail_json(msg=resp, **result)
+                            else:
+                                result['response'] = resp
+                        result['changed'] = True
+                    else:
+                        result['response'] = current_configuration
+                else:
+                    result['response'] = current_configuration
         else:
             if self.module.params['state'] == 'present':
                 if not self.module.check_mode:
-
-                    # result['rc'] = 1
-                    # result['msg_todo'] = "implement CREATE"
-                    # self.module.fail_json(msg=resp, **result)
-
                     if settings:
+                        crud_args = self.crud_args()
                         crud_args.append(settings)
                     ok, resp = self.create_func(self.sc_config, *crud_args)
                     if ok:
@@ -145,35 +180,44 @@ class SolaceCloudTask:
         return result
 
     def get_func(self, solace_config, *args):
-        return False, dict()
+        raise NotImplementedError("implementation missing in derived class")
 
     def create_func(self, solace_config, *args):
-        return False, dict()
+        raise NotImplementedError("implementation missing in derived class")
 
     def update_func(self, solace_config, *args):
-        return False, dict()
+        raise NotImplementedError("implementation missing in derived class")
 
     def delete_func(self, solace_config, *args):
-        return False, dict()
+        raise NotImplementedError("implementation missing in derived class")
 
-    def lookup_item(self):
-        return None
+    def lookup_item_kv(self):
+        raise NotImplementedError("implementation missing in derived class")
 
     def get_args(self):
         return []
 
     def crud_args(self):
-        return self.get_args() + [self.lookup_item()]
+        return self.get_args() + self.lookup_item_kv()
 
+    def get_whitelist_keys(self):
+        if hasattr(self, 'WHITELIST_KEYS'):
+            return self.WHITELIST_KEYS
+        return []
+
+    def get_required_together_keys(self):
+        if hasattr(self, 'REQUIRED_TOGETHER_KEYS'):
+            return self.REQUIRED_TOGETHER_KEYS
+        return dict()
 
 ###
 # End Class SolaceCloudTask
+
 
 # composable argument specs
 def arg_spec_solace_cloud():
     return dict(
         api_token=dict(type='str', required=True, no_log=True),
-        service_id=dict(type='str', required=False, default=None),
         timeout=dict(type='int', default='60', required=False)
     )
 
@@ -188,26 +232,6 @@ def arg_spec_state():
     return dict(
         state=dict(type='str', default='present', choices=['absent', 'present'])
     )
-
-
-def merge_dicts(*argv):
-    data = dict()
-    for arg in argv:
-        if arg:
-            data.update(arg)
-    return data
-
-
-def _type_conversion(d):
-    for k, i in d.items():
-        t = type(i)
-        if (t == str) and re.search(r'^[0-9]+$', i):
-            d[k] = int(i)
-        elif (t == str) and re.search(r'^[0-9]+\.[0-9]$', i):
-            d[k] = float(i)
-        elif t == dict:
-            d[k] = _type_conversion(i)
-    return d
 
 
 def _build_config_dict(resp, key):
@@ -228,49 +252,29 @@ def _build_config_dict(resp, key):
 def _parse_response(solace_config, resp):
     if sc.ENABLE_LOGGING:
         sc.log_http_roundtrip(resp)
-    # ?check what GET returns?
-    # POST: create service returns 201
-    # ?Solace Cloud API returns 202: accepted if long running request
+    # POST: https://api.solace.cloud/api/v0/services: returns 201
+    if resp.status_code == 201:
+        return True, _parse_good_response(resp)
     if resp.status_code != 200:
         return False, _parse_bad_response(resp)
     return True, _parse_good_response(resp)
 
 
 def _parse_good_response(resp):
-    j = resp.json()
-    # return the array for GET calls if exists
-    if 'data' in j.keys():
-        return j['data']
+    if resp.text:
+        j = resp.json()
+        # return the array for GET calls if exists
+        if 'data' in j.keys():
+            return j['data']
     return dict()
 
 
 def _parse_bad_response(resp):
     if not resp.text:
         return resp
-    # j = resp.json()
-    # if 'meta' in j.keys() and \
-    #         'error' in j['meta'].keys() and \
-    #         'description' in j['meta']['error'].keys():
-    #     # return j['meta']['error']['description']
-    #     # we want to see the full message, including the code & request
-    #     return _create_hint_bad_response(j['meta'])
     return dict(status_code=resp.status_code,
                 body=json.loads(resp.text)
                 )
-
-
-def compose_path(path_array):
-    if not type(path_array) is list:
-        raise TypeError("argument 'path_array' is not an array but {}".format(type(path_array)))
-    # ensure elements are 'url encoded'
-    # except first one: SEMP_V2_CONFIG or SOLACE_CLOUD_API_SERVICES_BASE_PATH
-    paths = []
-    for i, path_elem in enumerate(path_array):
-        if i > 0:
-            paths.append(path_elem.replace('/', '%2F'))
-        else:
-            paths.append(path_elem)
-    return '/'.join(paths)
 
 
 def _make_request(func, solace_config, path_array, json=None):
@@ -278,7 +282,7 @@ def _make_request(func, solace_config, path_array, json=None):
         return _parse_response(
             solace_config,
             func(
-                url=compose_path(path_array),
+                url=sc.compose_path(path_array),
                 json=json,
                 auth=solace_config.auth,
                 timeout=solace_config.timeout,
