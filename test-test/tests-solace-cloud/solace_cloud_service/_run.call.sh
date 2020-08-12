@@ -23,62 +23,41 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
-echo; echo "##############################################################################################################"
-echo
-
-source ./_run.env.sh
-
-##############################################################################################################################
-# Choose Environment
-
-# select here or interactively
-  #export AS_TEST_RUNNER_ENV="dev"
-  #export AS_TEST_RUNNER_ENV="package"
-
-source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
+SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+source $AS_TEST_HOME/lib/functions.sh
 
 ##############################################################################################################################
 # Configure
-testTestLogFile="./ansible-test-test.log"
-rm -f $testTestLogFile
-export ANSIBLE_LOG_PATH="$testTestLogFile"
-#export ANSIBLE_DEBUG=True
 
-runCallDirs=(
-  "tests-solace-cloud"
-  "tests-general"
-  "tests-1-broker"
-  "tests-2-brokers"
+solaceCloudAccountsInventoryFile=$(assertFile "$AS_TEST_SCRIPT_PATH/lib/solace-cloud-accounts.inventory.yml") || exit
+solaceCloudAccounts="all"
+
+playbooks=(
+  "$SCRIPT_PATH/create.playbook.yml"
+  "$SCRIPT_PATH/create.playbook.yml" # run it twice, to test idempotency
+  "$SCRIPT_PATH/facts.playbook.yml"
+  "$SCRIPT_PATH/ex_1.playbook.yml"
+  "$SCRIPT_PATH/ex_2.playbook.yml"
+  "$SCRIPT_PATH/delete.playbook.yml"
+  "$SCRIPT_PATH/delete.playbook.yml" # run it twice, to test idempotency
 )
 
 ##############################################################################################################################
-# show & wait
-x=$(showEnv)
-x=$(wait4Key)
-
+# Prepare
+mkdir $SCRIPT_PATH/tmp > /dev/null 2>&1
+rm -f $SCRIPT_PATH/tmp/*.*
 ##############################################################################################################################
-# Run tests
-#
+# Run
+for playbook in ${playbooks[@]}; do
+  ansible-playbook \
+                    -i $solaceCloudAccountsInventoryFile \
+                    $playbook \
+                    --extra-vars "SOLACE_CLOUD_ACCOUNTS=$solaceCloudAccounts" \
 
-  for runCallDir in ${runCallDirs[@]}; do
+  if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
+done
 
-    runScript="$AS_TEST_HOME/$runCallDir/_run.call.sh"
 
-    echo; echo "##############################################################################################################"
-    echo "# Running Tests: $runCallDir"
-    echo "# calling: $runScript"
-
-    $runScript
-
-    if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
-
-  done
-
-echo;
-echo "##############################################################################################################"
-echo "# All tests completed successfully!"
-echo;
 
 ###
 # The End.

@@ -1,0 +1,98 @@
+# ---------------------------------------------------------------------------------------------
+# MIT License
+#
+# Copyright (c) 2020, Solace Corporation, Ricardo Gomez-Ulmke (ricardo.gomez-ulmke@solace.com)
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# ---------------------------------------------------------------------------------------------
+
+---
+    - debug:
+        msg: "Get SEMP Management Endpoints for {{ sc_service.name }} "
+
+    # DEBUG
+    # - meta: end_play
+
+    - name: "Get Service: {{ sc_service.name }}"
+      solace_cloud_get_service:
+        api_token: "{{ api_token_all_permissions }}"
+        service_id: "{{ sc_service.serviceId }}"
+      register: result
+
+    - name: "Set Fact: Solace Service Details"
+      set_fact:
+        sc_service_details: "{{ result.response }}"
+      no_log: true
+
+    - name: "Save Solace Cloud Service Details to File"
+      local_action:
+        module: copy
+        content: "{{ sc_service_details | to_nice_json }}"
+        dest: "./tmp/facts.solace_cloud_service.{{ sc_service.name }}.details.json"
+
+    - name: "Get Semp Management Endpoints for: {{ sc_service.name }}"
+      solace_cloud_get_facts:
+        from_dict: "{{ sc_service_details }}"
+        field_funcs:
+          - get_serviceSEMPManagementEndpoints
+      register: semp_enpoints_facts
+
+    - name: "Save Solace Cloud Service SEMP Management Endpoints to File"
+      local_action:
+        module: copy
+        content: "{{ semp_enpoints_facts | to_nice_json }}"
+        dest: "./tmp/facts.solace_cloud_service.{{ sc_service.name }}.semp.json"
+
+    - name: "Set Fact: Solace Service SEMP"
+      set_fact:
+        sempv2_host: "{{ semp_enpoints_facts.facts.serviceManagementEndpoints.SEMP.SecuredSEMP.uriComponents.host }}"
+        sempv2_port: "{{ semp_enpoints_facts.facts.serviceManagementEndpoints.SEMP.SecuredSEMP.uriComponents.port }}"
+        sempv2_is_secure_connection: True
+        sempv2_username: "{{ semp_enpoints_facts.facts.serviceManagementEndpoints.SEMP.username }}"
+        sempv2_password: "{{ semp_enpoints_facts.facts.serviceManagementEndpoints.SEMP.password }}"
+        sempv2_timeout: 60
+
+    - name: "Gather Solace Facts from Service"
+      solace_gather_facts:
+        host: "{{ sempv2_host }}"
+        port: "{{ sempv2_port }}"
+        secure_connection: "{{ sempv2_is_secure_connection }}"
+        username: "{{ sempv2_username }}"
+        password: "{{ sempv2_password }}"
+        timeout: "{{ sempv2_timeout }}"
+        solace_cloud_api_token: "{{ api_token_all_permissions }}"
+        solace_cloud_service_id: "{{ sc_service.serviceId }}"
+
+    - name: "Show ansible_facts.solace"
+      debug:
+        msg:
+          - "ansible_facts.solace:"
+          - "{{ ansible_facts.solace }}"
+
+    - name: "Save Solace Cloud Service Facts to File"
+      local_action:
+        module: copy
+        content: "{{ ansible_facts.solace | to_nice_json }}"
+        dest: "./tmp/solace_facts.solace_cloud_service.{{ sc_service.name }}.json"
+
+
+
+
+###
+# The End.

@@ -23,62 +23,31 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
-echo; echo "##############################################################################################################"
-echo
-
-source ./_run.env.sh
+SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 
 ##############################################################################################################################
-# Choose Environment
+# Settings
 
-# select here or interactively
-  #export AS_TEST_RUNNER_ENV="dev"
-  #export AS_TEST_RUNNER_ENV="package"
-
-source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
+  runCallDirs=(
+    "solace_cloud_service"
+  )
 
 ##############################################################################################################################
-# Configure
-testTestLogFile="./ansible-test-test.log"
-rm -f $testTestLogFile
-export ANSIBLE_LOG_PATH="$testTestLogFile"
-#export ANSIBLE_DEBUG=True
+# Run
+for runCallDir in ${runCallDirs[@]}; do
 
-runCallDirs=(
-  "tests-solace-cloud"
-  "tests-general"
-  "tests-1-broker"
-  "tests-2-brokers"
-)
+  runScript="$SCRIPT_PATH/$runCallDir/_run.call.sh"
 
-##############################################################################################################################
-# show & wait
-x=$(showEnv)
-x=$(wait4Key)
+  echo; echo "##############################################################################################################"
+  echo "# script: $SCRIPT_PATH"
+  echo "# Running Tests: $runCallDir"
+  echo "# calling: $runScript"
 
-##############################################################################################################################
-# Run tests
-#
+  $runScript
 
-  for runCallDir in ${runCallDirs[@]}; do
+  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
 
-    runScript="$AS_TEST_HOME/$runCallDir/_run.call.sh"
-
-    echo; echo "##############################################################################################################"
-    echo "# Running Tests: $runCallDir"
-    echo "# calling: $runScript"
-
-    $runScript
-
-    if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
-
-  done
-
-echo;
-echo "##############################################################################################################"
-echo "# All tests completed successfully!"
-echo;
+done
 
 ###
 # The End.

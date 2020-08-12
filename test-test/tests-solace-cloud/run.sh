@@ -33,24 +33,17 @@ source ./_run.env.sh
 # Choose Environment
 
 # select here or interactively
-  #export AS_TEST_RUNNER_ENV="dev"
+  export AS_TEST_RUNNER_ENV="dev"
   #export AS_TEST_RUNNER_ENV="package"
 
 source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
 ##############################################################################################################################
-# Configure
-testTestLogFile="./ansible-test-test.log"
-rm -f $testTestLogFile
-export ANSIBLE_LOG_PATH="$testTestLogFile"
-#export ANSIBLE_DEBUG=True
+# Settings
 
-runCallDirs=(
-  "tests-solace-cloud"
-  "tests-general"
-  "tests-1-broker"
-  "tests-2-brokers"
-)
+  runCallDirs=(
+    "solace_cloud_service"
+  )
 
 ##############################################################################################################################
 # show & wait
@@ -63,7 +56,7 @@ x=$(wait4Key)
 
   for runCallDir in ${runCallDirs[@]}; do
 
-    runScript="$AS_TEST_HOME/$runCallDir/_run.call.sh"
+    runScript="$AS_TEST_SCRIPT_PATH/$runCallDir/_run.call.sh"
 
     echo; echo "##############################################################################################################"
     echo "# Running Tests: $runCallDir"
@@ -79,6 +72,7 @@ echo;
 echo "##############################################################################################################"
 echo "# All tests completed successfully!"
 echo;
+
 
 ###
 # The End.
