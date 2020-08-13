@@ -164,33 +164,66 @@ class SolaceCloudGetFactsTask():
         "get_serviceSEMPManagementEndpoints"
     ]
 
-    def get_facts(self):
-        from_dict = self.module.params['from_dict']
+# check:
+# at least one field_func or get_formattedHostInventory needs to be specified
+# could be both or multiple
+    def validate_args(self):
         field_funcs = self.module.params['field_funcs']
-        # either fields or field_funcs must have at least one element
-        if field_funcs is None or len(field_funcs) == 0:
-            return False, "No 'field_funcs' provided."
-        for field_func in field_funcs:
-            exists = (True if field_func in self.FIELD_FUNCS else False)
-            if not exists:
-                return False, "Unknown field_func='{}'. Valid field functions are: {}.".format(field_func, str(self.FIELD_FUNCS))
+        has_get_funcs = False
+        if field_funcs is not None and len(field_funcs) > 0:
+            for field_func in field_funcs:
+                exists = (True if field_func in self.FIELD_FUNCS else False)
+                if not exists:
+                    return False, "Unknown field_func='{}'. Valid field functions are: {}.".format(field_func, str(self.FIELD_FUNCS))
+            has_get_funcs = True
 
+        param_get_formattedHostInventory = self.module.params['get_formattedHostInventory']
+        if param_get_formattedHostInventory is not None:
+            has_get_funcs = True
+        if not has_get_funcs:
+            return False, "no get functions found. Specify at least one."
+        return True, ''
+
+    def get_facts(self):
+        ok, msg = self.validate_args()
+        if not ok:
+            return False, msg
+        # return facts['formattedHostInventory']
+        from_dict = self.module.params['from_dict']
         search_object = from_dict
         facts = dict()
+        field_funcs = self.module.params['field_funcs']
+        if field_funcs and len(field_funcs) > 0:
+            try:
+                for field_func in field_funcs:
+                    field, value = globals()[field_func](search_object)
+                    facts[field] = value
+            except AnsibleError as e:
+                try:
+                    e_msg = json.loads(str(e))
+                except JSONDecodeError:
+                    e_msg = [str(e)]
+                ex_msg = [
+                    "field_func:'{}'".format(field_func),
+                    e_msg
+                ]
+                raise AnsibleError(json.dumps(ex_msg))
+
         try:
-            for field_func in field_funcs:
-                field, value = globals()[field_func](search_object)
-                facts[field] = value
+            param_get_formattedHostInventory = self.module.params['get_formattedHostInventory']
+            if param_get_formattedHostInventory:
+                field, value = get_formattedHostInventory(search_object,
+                                                          param_get_formattedHostInventory['host_entry'],
+                                                          param_get_formattedHostInventory['api_token'])
         except AnsibleError as e:
             try:
                 e_msg = json.loads(str(e))
             except JSONDecodeError:
                 e_msg = [str(e)]
-            ex_msg = [
-                "field_func:'{}'".format(field_func),
-                e_msg
-            ]
+            ex_msg = ["get_formattedHostInventory():", e_msg]
             raise AnsibleError(json.dumps(ex_msg))
+
+        facts[field] = value
 
         return True, facts
 
@@ -199,7 +232,39 @@ class SolaceCloudGetFactsTask():
 #
 
 
+def get_formattedHostInventory(search_dict, host_entry, api_token):
+    if not type(search_dict) is dict:
+        raise AnsibleError("input is not of type 'dict', but type='{}'.".format(type(search_dict)))
+
+    eps_field, eps_val = get_serviceSEMPManagementEndpoints(search_dict)
+    inv = dict(
+        all=dict()
+    )
+    hosts = dict()
+    hosts[host_entry] = {
+        'meta': {
+            'service_name': search_dict['name']
+        },
+        'ansible_connection': 'local',
+        'solace_cloud_api_token': api_token,
+        'solace_cloud_service_id': search_dict['serviceId'],
+        'sempv2_host': eps_val['SEMP']['SecuredSEMP']['uriComponents']['host'],
+        "sempv2_port": eps_val['SEMP']['SecuredSEMP']['uriComponents']['port'],
+        "sempv2_is_secure_connection": True,
+        "sempv2_username": eps_val['SEMP']['username'],
+        "sempv2_password": eps_val['SEMP']['password'],
+        "sempv2_timeout": "60",
+        "vpn": search_dict['msgVpnName'],
+        "virtual_router": "primary"
+
+    }
+    inv['all']['hosts'] = hosts
+    return 'formattedHostInventory', inv
+
+
 def get_serviceSEMPManagementEndpoints(search_dict):
+    if not type(search_dict) is dict:
+        raise AnsibleError("input is not of type 'dict', but type='{}'.".format(type(search_dict)))
     eps = dict(
         SEMP=dict(
             SecuredSEMP=dict()
@@ -300,7 +365,14 @@ def _get_field(search_dict, field):
 def run_module():
     module_args = dict(
         from_dict=dict(type='dict', required=True),
-        field_funcs=dict(type='list', required=True, elements='str')
+        field_funcs=dict(type='list', required=False, elements='str'),
+        get_formattedHostInventory=dict(type='dict',
+                                        required=False,
+                                        default=None,
+                                        options=dict(
+                                            host_entry=dict(type='str', required=True),
+                                            api_token=dict(type='str', required=True)
+                                        ))
     )
     arg_spec = dict()
     # module_args override standard arg_specs

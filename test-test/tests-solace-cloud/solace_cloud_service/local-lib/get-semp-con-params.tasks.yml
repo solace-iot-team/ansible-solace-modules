@@ -59,6 +59,20 @@
         content: "{{ semp_enpoints_facts | to_nice_json }}"
         dest: "./tmp/facts.solace_cloud_service.{{ sc_service.name }}.semp.json"
 
+    - name: "Get Host Inventory for: {{ sc_service.name }}"
+      solace_cloud_get_facts:
+        from_dict: "{{ sc_service_details }}"
+        get_formattedHostInventory:
+          host_entry: "{{ sc_service.name }}"
+          api_token: "{{ api_token_all_permissions }}"
+      register: inv_results
+
+    - name: "Save Solace Cloud Service inventory to File"
+      local_action:
+        module: copy
+        content: "{{ inv_results.facts.formattedHostInventory | to_nice_json }}"
+        dest: "./tmp/inventory.{{ sc_service.name }}.json"
+
     - name: "Set Fact: Solace Service SEMP"
       set_fact:
         sempv2_host: "{{ semp_enpoints_facts.facts.serviceManagementEndpoints.SEMP.SecuredSEMP.uriComponents.host }}"
