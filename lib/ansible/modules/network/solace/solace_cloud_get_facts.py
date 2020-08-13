@@ -53,7 +53,7 @@ short_description: Provides convenience functions to access solace facts gathere
 
 description: >
     Provides convenience functions to access Solace Cloud service facts gathered with M(solace_cloud_account_gather_facts).
-    Call M(solace_cloud_account_gather_facts) first.
+    Call M(solace_cloud_account_gather_facts).
 
 options:
   from_dict:
@@ -62,7 +62,7 @@ options:
     type: dict
   field_funcs:
     description: List of pre-built field functions that retrieve values from the 'from_dict'.
-    required: True
+    required: false
     type: list
     default: []
     elements: str
@@ -72,6 +72,22 @@ options:
       get_serviceSEMPManagementEndpoints:
         description: >
             Retrieves the SEMP management endpoint.
+  get_formattedHostInventory:
+    description: >
+        Get the facts formatted as a JSON host inventory.
+        Retrieve the inventory field by field or
+        save to file and use in subsequent playbooks as an inventory.
+    type: dict
+    required: false
+    suboptions:
+        host_entry:
+            description: The entry for this broker / service in the hosts file. Must be a valid JSON key.
+            type: str
+            required: true
+        api_token:
+            description: The API token to access the Solace Cloud Service API.
+            type: str
+            required: true
 
 seealso:
 - module: solace_cloud_account_gather_facts
@@ -136,6 +152,21 @@ EXAMPLES = '''
         module: copy
         content: "{{ ansible_facts.solace | to_nice_json }}"
         dest: "./tmp/solace_facts.solace_cloud_service.{{ sc_service.name }}.json"
+
+    - name: "Get Host Inventory for: {{ sc_service.name }}"
+      solace_cloud_get_facts:
+        from_dict: "{{ sc_service_details }}"
+        get_formattedHostInventory:
+          host_entry: "{{ sc_service.name }}"
+          api_token: "{{ api_token_all_permissions }}"
+      register: inv_results
+
+    - name: "Save Solace Cloud Service inventory to File"
+      local_action:
+        module: copy
+        content: "{{ inv_results.facts.formattedHostInventory | to_nice_json }}"
+        dest: "./tmp/inventory.{{ sc_service.name }}.json"
+
 '''
 
 RETURN = '''
