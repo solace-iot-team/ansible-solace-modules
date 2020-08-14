@@ -57,6 +57,7 @@ options:
     description: The name of the service to manage. Mandatory for state='present'.
     type: str
     required: false
+    notes: The name must be a key, it is used as a YAML / JSON key. Use only ASCII, '-', or '_'. No whitespaces.
   service_id:
     description: The service-id of the service to manage. Allowed option for state='absent'.
     type: str
