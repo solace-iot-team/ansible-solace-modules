@@ -91,7 +91,7 @@ options:
     functions:
       get_bridge_remoteMsgVpnLocations:
         description:
-            - "Retrieve remote message vpn locations (plain, secured, compressed) for the service/broker."
+            - "Retrieve enabled remote message vpn locations (plain, secured, compressed) for the service/broker."
             - "For Solace Cloud: {hostname}:{port}."
             - "For broker: v:{virtualRouterName}."
 
@@ -292,12 +292,21 @@ def _get_bridge_remoteMsgVpnLocations(search_dict):
     )
     if search_dict['isSolaceCloud']:
         f, smfMessagingEndpoints = _get_serviceSMFMessagingEndpoints(search_dict)
-        locs['plain'] = (smfMessagingEndpoints['SMF']['SMF']['uriComponents']['host']
-                         + ":" + str(smfMessagingEndpoints['SMF']['SMF']['uriComponents']['port']))
-        locs['compressed'] = (smfMessagingEndpoints['SMF']['CompressedSMF']['uriComponents']['host']
-                              + ":" + str(smfMessagingEndpoints['SMF']['CompressedSMF']['uriComponents']['port']))
-        locs['secured'] = (smfMessagingEndpoints['SMF']['SecuredSMF']['uriComponents']['host']
-                           + ":" + str(smfMessagingEndpoints['SMF']['SecuredSMF']['uriComponents']['port']))
+        if smfMessagingEndpoints['SMF']['SMF']['uriComponents']['host']:
+            locs['plain'] = (str(smfMessagingEndpoints['SMF']['SMF']['uriComponents']['host'])
+                             + ":" + str(smfMessagingEndpoints['SMF']['SMF']['uriComponents']['port']))
+        else:
+            locs['plain'] = None
+        if smfMessagingEndpoints['SMF']['CompressedSMF']['uriComponents']['host']:
+            locs['compressed'] = (str(smfMessagingEndpoints['SMF']['CompressedSMF']['uriComponents']['host'])
+                                  + ":" + str(smfMessagingEndpoints['SMF']['CompressedSMF']['uriComponents']['port']))
+        else:
+            locs['compressed'] = None
+        if smfMessagingEndpoints['SMF']['SecuredSMF']['uriComponents']['host']:
+            locs['secured'] = (str(smfMessagingEndpoints['SMF']['SecuredSMF']['uriComponents']['host'])
+                               + ":" + str(smfMessagingEndpoints['SMF']['SecuredSMF']['uriComponents']['port']))
+        else:
+            locs['secured'] = None
     else:
         f, virtual_router = _get_virtualRouterName(search_dict)
         loc = "v:" + virtual_router
@@ -316,39 +325,42 @@ def _get_serviceSMFMessagingEndpoints(search_dict):
             CompressedSMF=dict()
         )
     )
+    smf_protocol = None
+    smf_host = None
+    smf_port = None
+    smf_uri = None
+
+    sec_smf_protocol = None
+    sec_smf_host = None
+    sec_smf_port = None
+    sec_smf_uri = None
+
+    cmp_smf_protocol = None
+    cmp_smf_host = None
+    cmp_smf_port = None
+    cmp_smf_uri = None
+
     if search_dict['isSolaceCloud']:
         smf_dict = _get_sc_messaging_protocols_smf_dict(search_dict)
+        # if endPoint is not enabled, API omits it
         smf_end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='SMF')
+        if smf_end_point_dict:
+            smf_uri = _get_sc_messaging_protocol_endpoint_uri(smf_end_point_dict)
+            t = urlparse(smf_uri)
+            smf_protocol = t.scheme
+            smf_host = t.hostname
         sec_smf_end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='Secured SMF')
+        if sec_smf_end_point_dict:
+            sec_smf_uri = _get_sc_messaging_protocol_endpoint_uri(sec_smf_end_point_dict)
+            t = urlparse(sec_smf_uri)
+            sec_smf_protocol = t.scheme
+            sec_smf_host = t.hostname
         cmp_smf_end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='Compressed SMF')
-
-        smf_uri = _get_sc_messaging_protocol_endpoint_uri(smf_end_point_dict)
-        t = urlparse(smf_uri)
-        smf_protocol = t.scheme
-        smf_host = t.hostname
-
-        sec_smf_uri = _get_sc_messaging_protocol_endpoint_uri(sec_smf_end_point_dict)
-        t = urlparse(sec_smf_uri)
-        sec_smf_protocol = t.scheme
-        sec_smf_host = t.hostname
-
-        cmp_smf_uri = _get_sc_messaging_protocol_endpoint_uri(cmp_smf_end_point_dict)
-        t = urlparse(cmp_smf_uri)
-        cmp_smf_protocol = t.scheme
-        cmp_smf_host = t.hostname
-    else:
-        # smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
-        smf_protocol = None
-        smf_host = None
-        smf_uri = None
-
-        sec_smf_protocol = None
-        sec_smf_host = None
-        sec_smf_uri = None
-
-        cmp_smf_protocol = None
-        cmp_smf_host = None
-        cmp_smf_uri = None
+        if cmp_smf_end_point_dict:
+            cmp_smf_uri = _get_sc_messaging_protocol_endpoint_uri(cmp_smf_end_point_dict)
+            t = urlparse(cmp_smf_uri)
+            cmp_smf_protocol = t.scheme
+            cmp_smf_host = t.hostname
 
     f, smf_port = _get_serviceSmfPlainTextListenPort(search_dict)
     f, sec_smf_port = _get_serviceSmfTlsListenPort(search_dict)
@@ -388,8 +400,11 @@ def _get_serviceSmfPlainTextListenPort(search_dict):
     if search_dict['isSolaceCloud']:
         smf_dict = _get_sc_messaging_protocols_smf_dict(search_dict)
         end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='SMF')
-        uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
-        value = _get_port_from_uri(uri)
+        if end_point_dict:
+            uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
+            value = _get_port_from_uri(uri)
+        else:
+            value = None
     else:
         smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
         value = smf_dict['listen-port']
@@ -400,8 +415,11 @@ def _get_serviceSmfCompressionListenPort(search_dict):
     if search_dict['isSolaceCloud']:
         smf_dict = _get_sc_messaging_protocols_smf_dict(search_dict)
         end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='Compressed SMF')
-        uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
-        value = _get_port_from_uri(uri)
+        if end_point_dict:
+            uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
+            value = _get_port_from_uri(uri)
+        else:
+            value = None
     else:
         smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
         value = smf_dict['compression-listen-port']
@@ -412,8 +430,11 @@ def _get_serviceSmfTlsListenPort(search_dict):
     if search_dict['isSolaceCloud']:
         smf_dict = _get_sc_messaging_protocols_smf_dict(search_dict)
         end_point_dict = _get_sc_messaging_protocol_endpoint(smf_dict, field='name', value='Secured SMF')
-        uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
-        value = _get_port_from_uri(uri)
+        if end_point_dict:
+            uri = _get_sc_messaging_protocol_endpoint_uri(end_point_dict)
+            value = _get_port_from_uri(uri)
+        else:
+            value = None
     else:
         smf_dict = _get_broker_service_dict(search_dict, field="name", value="SMF")
         value = smf_dict['ssl']['listen-port']
@@ -452,7 +473,7 @@ def _get_sc_messaging_protocols_smf_dict(search_dict):
     search_value = 'SMF'
     smf_dict = _find_nested_dict(messaging_protocols_dict, field="name", value=search_value)
     if smf_dict is None:
-        raise AnsibleError("Could not find 'name={}' in messaging protocols in Solace Cloud service ansible_facts. API may have changed. Pls raise an issue.".format(search_value))
+        raise AnsibleError("Could not find 'name={}' in messaging protocols in Solace Cloud service ansible_facts. Check if it is enabled.".format(search_value))
     return smf_dict
 
 
@@ -464,8 +485,10 @@ def _get_sc_messaging_protocol_endpoint(search_dict, field, value):
     if len(end_points) == 0:
         raise AnsibleError("List:'{}' in dict:{} in Solace Cloud service ansible_facts. API may have changed. Pls raise an issue.".format(element, json.dumps(search_dict)))
     end_point_dict = _find_nested_dict(end_points, field, value)
-    if end_point_dict is None:
-        raise AnsibleError("Could not find messaging protocol end point with '{}={}' in Solace Cloud service ansible_facts. API may have changed. Pls raise an issue.".format(field, value))
+    # endPoint may not be enabled
+    # if end_point_dict is None:
+    #     # might not be enabled
+    #     raise AnsibleError("Could not find messaging protocol end point with '{}={}' in Solace Cloud service ansible_facts. Check if it is enabled.".format(field, value))
     return end_point_dict
 
 
@@ -475,9 +498,10 @@ def _get_sc_messaging_protocol_endpoint_uri(search_dict):
         errs = [
             "Could not find '{}' in messaging protocol end point:".format(element),
             search_dict,
-            "in Solace Cloud service ansible_facts. API may have changed. Pls raise an issue."
+            "in Solace Cloud service ansible_facts."
         ]
-        raise AnsibleError(json.dumps(errs))
+        return dict()
+        # raise AnsibleError(json.dumps(errs))
     if len(search_dict['uris']) != 1:
         errs = [
             "'{}' list contains != 1 elements in messaging protocol end point:".format(element),
