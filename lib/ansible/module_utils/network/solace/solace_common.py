@@ -144,15 +144,23 @@ if not HAS_IMPORT_ERROR:
             return r
 
 
-def type_conversion(d):
+# solace cloud: cast everything to string
+# broker: cast strings to ints & floats, string booleans to boolean
+def type_conversion(d, is_solace_cloud):
     for k, i in d.items():
         t = type(i)
-        if (t == str) and re.search(r'^[0-9]+$', i):
-            d[k] = int(i)
-        elif (t == str) and re.search(r'^[0-9]+\.[0-9]$', i):
-            d[k] = float(i)
-        elif t == dict:
-            d[k] = type_conversion(i)
+        if is_solace_cloud:
+            if t == int or t == float:
+                d[k] = str(i)
+            elif t == bool:
+                d[k] = str(i).lower()
+        else:
+            if (t == str) and re.search(r'^[0-9]+$', i):
+                d[k] = int(i)
+            elif (t == str) and re.search(r'^[0-9]+\.[0-9]$', i):
+                d[k] = float(i)
+            elif t == dict:
+                d[k] = type_conversion(i, is_solace_cloud)
     return d
 
 

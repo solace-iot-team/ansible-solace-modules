@@ -159,7 +159,7 @@ class SolaceTask:
 
         if settings:
             # jinja treats everything as a string, so cast ints and floats
-            settings = _type_conversion(settings)
+            settings = sc.type_conversion(settings, is_broker_solace_cloud(self.solace_config))
 
         ok, resp = self.get_func(self.solace_config, *(self.get_args() + [self.lookup_item()]))
 
@@ -471,18 +471,6 @@ def _build_config_dict(resp, key):
     # return an array with 1 element
     d = dict()
     d[resp[key]] = resp
-    return d
-
-
-def _type_conversion(d):
-    for k, i in d.items():
-        t = type(i)
-        if (t == str) and re.search(r'^[0-9]+$', i):
-            d[k] = int(i)
-        elif (t == str) and re.search(r'^[0-9]+\.[0-9]$', i):
-            d[k] = float(i)
-        elif t == dict:
-            d[k] = _type_conversion(i)
     return d
 
 

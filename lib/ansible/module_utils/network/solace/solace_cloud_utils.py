@@ -77,7 +77,7 @@ class SolaceCloudTask:
         )
         settings = self.module.params['settings']
         if settings:
-            settings = sc.type_conversion(settings)
+            settings = sc.type_conversion(settings, True)
 
         ok, resp = self.get_func(self.sc_config, *self.crud_args())
         if not ok:
