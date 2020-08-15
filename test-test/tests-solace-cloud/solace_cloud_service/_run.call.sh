@@ -38,6 +38,7 @@ playbooks=(
   "$SCRIPT_PATH/facts.playbook.yml"
   "$SCRIPT_PATH/ex_1.playbook.yml"
   "$SCRIPT_PATH/ex_2.playbook.yml"
+  "$SCRIPT_PATH/ex_3.playbook.yml"
   "$SCRIPT_PATH/delete.playbook.yml"
   "$SCRIPT_PATH/delete.playbook.yml" # run it twice, to test idempotency
 )

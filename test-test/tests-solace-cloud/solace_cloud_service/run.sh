@@ -60,6 +60,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
       "./facts.playbook.yml"
       "./ex_1.playbook.yml"
       "./ex_2.playbook.yml"
+      "./ex_3.playbook.yml"
       "./delete.playbook.yml"
       "./delete.playbook.yml" # run it twice, to test idempotency
     )
