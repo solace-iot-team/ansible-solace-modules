@@ -46,6 +46,7 @@ description:
 
 notes:
 - "Supports Solace Cloud Brokers as well as Solace Standalone Brokers."
+- "Solace Cloud: Polls periodically until Client Profile created and only then returns."
 - "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientProfile)."
 - "Reference: U(https://docs.solace.com/Solace-Cloud/ght_use_rest_api_client_profiles.htm)."
 

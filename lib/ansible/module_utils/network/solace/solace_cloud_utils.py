@@ -267,6 +267,12 @@ def _build_config_dict(resp, key):
 # request/response handling
 
 
+def parse_resp_body_for_errs(resp_body):
+    if resp_body['data'] and 'error' in resp_body['data']:
+        return False, resp_body['data']
+    return True, None
+
+
 def _parse_response(solace_config, resp):
     if sc.ENABLE_LOGGING:
         sc.log_http_roundtrip(resp)

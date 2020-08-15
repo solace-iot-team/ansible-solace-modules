@@ -38,6 +38,7 @@ HAS_IMPORT_ERROR = False
 IMPORT_ERR_TRACEBACK = None
 try:
     import ansible.module_utils.network.solace.solace_common as sc
+    import ansible.module_utils.network.solace.solace_cloud_utils as scu
     from ansible.errors import AnsibleError
     import requests
 except ImportError:
@@ -551,19 +552,26 @@ def _wait_solace_cloud_request_completed(solace_config, request_resp):
             if sc.ENABLE_LOGGING:
                 sc.log_http_roundtrip(resp)
             if resp.status_code != 200:
-                raise AnsibleError("GET request status error: {}".format(resp.status_code))
+                return False, resp
+                # raise AnsibleError("Solace Cloud: GET request status error: {}".format(resp.status_code))
         except requests.exceptions.ConnectionError as e:
-            raise AnsibleError("GET request status error: {}".format(str(e)))
+            raise AnsibleError("Solace Cloud: GET request status error: {}".format(str(e)))
 
         if resp.text:
             resp_body = json.loads(resp.text)
             is_completed = (resp_body['data']['adminProgress'] == 'completed')
             if is_completed:
-                return resp
+                return True, resp_body
+            else:
+                ok, err = scu.parse_resp_body_for_errs(resp_body)
+                if not ok:
+                    return False, err
         else:
-            raise AnsibleError("GET request status error: no body found in response")
+            raise AnsibleError("Solace Cloud: GET request status error: no body found in response")
         try_count += 1
         time.sleep(delay)
+    # never gets here
+    return True, None
 
 
 def _parse_response(solace_config, resp):
@@ -571,7 +579,7 @@ def _parse_response(solace_config, resp):
         sc.log_http_roundtrip(resp)
     # Solace Cloud API returns 202: accepted if long running request
     if resp.status_code == 202 and is_broker_solace_cloud(solace_config):
-        resp = _wait_solace_cloud_request_completed(solace_config, resp)
+        return _wait_solace_cloud_request_completed(solace_config, resp)
     elif resp.status_code != 200:
         return False, parse_bad_response(resp)
     return True, parse_good_response(resp)
