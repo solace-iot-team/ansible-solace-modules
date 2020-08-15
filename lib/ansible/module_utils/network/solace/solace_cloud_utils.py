@@ -106,6 +106,10 @@ class SolaceCloudTask:
                 if settings and len(settings.keys()):
                     # compare new settings against configuration
                     current_settings = current_configuration
+
+                    # logging.debug("\n\n\nsettings=\n%s\n\n\n", json.dumps(settings, indent=2))
+                    # logging.debug("\n\n\ncurrent_settings=\n%s\n\n\n", json.dumps(current_settings, indent=2))
+
                     bad_keys = [key for key in settings if key not in current_settings.keys()]
                     # remove whitelist items from bad_keys
                     bad_keys = [item for item in bad_keys if item not in whitelist]
@@ -126,8 +130,18 @@ class SolaceCloudTask:
                         )
                         self.module.fail_json(msg=msg, **result)
                     # changed keys are those that exist in settings and don't match current settings
-                    changed_keys = [x for x in settings if x in current_settings.keys()
-                                    and settings[x] != current_settings[x]]
+
+                    # does not do a deep comparison and returns wrong results for nested dicts
+                    # changed_keys = [x for x in settings if x in current_settings.keys()
+                    #                 and settings[x] != current_settings[x]]
+                    # # logging.debug("\n\n\nchanged_keys=\n%s\n\n\n", str(changed_keys))
+
+                    # walk recursively through the dict
+                    changed_settings = sc.do_deep_compare(settings, current_settings)
+                    # logging.debug("\n\n\nchanged_settings=\n%s", json.dumps(changed_settings, indent=2))
+                    changed_keys = [*changed_settings]
+                    # logging.debug("changed_keys=\n%s\n\n\n", str(changed_keys))
+
                     # add back in anything from the whitelist
                     changed_keys = changed_keys + removed_keys
                     # add any 'required together' keys
@@ -147,7 +161,11 @@ class SolaceCloudTask:
                         self.module.fail_json(msg=msg, **result)
 
                     if len(changed_keys):
-                        delta_settings = {key: settings[key] for key in changed_keys}
+                        # original
+                        # delta_settings = {key: settings[key] for key in changed_keys}
+                        delta_settings = changed_settings
+                        shallow_delta = {key: settings[key] for key in changed_keys if not isinstance(settings[key], dict)}
+                        delta_settings.update(shallow_delta)
                         crud_args = self.crud_args()
                         crud_args.append(delta_settings)
                         result['delta'] = delta_settings

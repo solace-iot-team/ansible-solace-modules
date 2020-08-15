@@ -247,7 +247,7 @@ class SolaceCloudServiceTask(scu.SolaceCloudTask):
 
     def update_func(self, sc_config, lookup_item_key, lookup_item_value, delta_settings=None):
         resp = dict(
-            error="Solace Cloud Service already exists. You can't update a Solace Cloud Service. Only option: destroy & re-create."
+            error="Solace Cloud Service already exists. You can't update a Solace Cloud Service. Only option: delete & re-create."
         )
         return False, resp
 

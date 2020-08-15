@@ -35,6 +35,7 @@ import json
 import os
 import sys
 from distutils.util import strtobool
+import copy
 
 HAS_IMPORT_ERROR = False
 try:
@@ -170,11 +171,33 @@ def compose_path(path_array):
     # except first one: SEMP_V2_CONFIG or SOLACE_CLOUD_API_SERVICES_BASE_PATH
     paths = []
     for i, path_elem in enumerate(path_array):
+        if path_elem == '':
+            raise ValueError("path_elem='{}' is empty in path_array='{}'.".format(path_elem, str(path_array)))
         if i > 0:
             paths.append(path_elem.replace('/', '%2F'))
         else:
             paths.append(path_elem)
     return '/'.join(paths)
+
+
+def do_deep_compare(new, old, changes=dict()):
+    for k in new.keys():
+        if not isinstance(new[k], dict):
+            if new[k] != old.get(k, None):
+                changes[k] = new[k]
+        else:
+            # changes[k] = dict()
+            if k in old:
+                c = do_deep_compare(new[k], old[k], dict())
+                # logging.debug("\n\nc=\n{}\n\n".format(json.dumps(c, indent=2)))
+                if c:
+                    # logging.debug("\n\nc not empty: c=\n{}\n\n".format(json.dumps(c, indent=2)))
+                    changes[k] = c
+                    # changes[k].update(c)
+            else:
+                changes[k] = copy.deepcopy(new[k])
+    # logging.debug("\n\nreturning changes =\n{}\n\n".format(json.dumps(changes, indent=2)))
+    return changes
 
 
 ###
