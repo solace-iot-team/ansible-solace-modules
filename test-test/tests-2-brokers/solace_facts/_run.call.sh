@@ -33,6 +33,7 @@ source $AS_TEST_HOME/lib/functions.sh
 
 ##############################################################################################################################
 # Run
+
 playbook="$SCRIPT_PATH/exceptions.bad-solace-cloud-config.playbook.yml"
 badCloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/bad.cloud.broker.inventory.json") || exit
 brokers="all"

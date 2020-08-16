@@ -126,6 +126,14 @@ class SolaceBridgeRemoteVpnTask(su.SolaceTask):
 
     def __init__(self, module):
         su.SolaceTask.__init__(self, module)
+        self.validate_args()
+
+    def validate_args(self):
+        rvl = self.module.params['remote_vpn_location']
+        if rvl == '':
+            result = dict(rc=1, changed=False)
+            msg = "missing parameter: remote_vpn_location='{}'".format(rvl)
+            self.module.fail_json(msg=msg, **result)
 
     def get_args(self):
         return [self.module.params['msg_vpn'],

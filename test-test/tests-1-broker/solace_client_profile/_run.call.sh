@@ -37,6 +37,7 @@ rm -f $ANSIBLE_SOLACE_LOG_FILE
 # Run
 
 playbooks=(
+  "$SCRIPT_PATH/update.playbook.yml"
   "$SCRIPT_PATH/exceptions.playbook.yml"
   "$SCRIPT_PATH/playbook.yml"
 )
@@ -49,7 +50,7 @@ for playbook in ${playbooks[@]}; do
                     $playbook \
                     --extra-vars "brokers=$BROKERS" \
 
-  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo "ERR >>> $SCRIPT_PATH"; echo; exit 1; fi
 
 done
 

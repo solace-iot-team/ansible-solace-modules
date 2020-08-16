@@ -31,10 +31,12 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'supported_by': 'community'}
 
 import ansible.module_utils.network.solace.solace_utils as su
+import ansible.module_utils.network.solace.solace_common as sc
 from ansible.module_utils.basic import AnsibleModule
 import traceback
 
 HAS_IMPORT_ERROR = False
+IMPORT_ERR_TRACEBACK = None
 try:
     import requests
 except ImportError:
@@ -104,10 +106,7 @@ samples:
 class SolaceGetAvailableTask(su.SolaceTask):
 
     def __init__(self, module):
-        if HAS_IMPORT_ERROR:
-            exceptiondata = traceback.format_exc().splitlines()
-            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
-            module.fail_json(msg="Missing module: %s" % exceptionarray[0], rc=1, exception=IMPORT_ERR_TRACEBACK)
+        sc.module_fail_on_import_error(module, HAS_IMPORT_ERROR, IMPORT_ERR_TRACEBACK)
         su.SolaceTask.__init__(self, module)
         return
 
@@ -131,8 +130,8 @@ def make_get_request(solace_config, path_array):
                     headers={'x-broker-name': solace_config.x_broker},
                     params=None
         )
-        if su.ENABLE_LOGGING:
-            su.log_http_roundtrip(resp)
+        if sc.ENABLE_LOGGING:
+            sc.log_http_roundtrip(resp)
         if resp.status_code != 200:
             return False, su.parse_bad_response(resp)
         return True, su.parse_good_response(resp)

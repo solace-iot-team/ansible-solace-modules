@@ -46,6 +46,7 @@ export ANSIBLE_LOG_PATH="$testTestLogFile"
 #export ANSIBLE_DEBUG=True
 
 runCallDirs=(
+  "tests-solace-cloud"
   "tests-general"
   "tests-1-broker"
   "tests-2-brokers"

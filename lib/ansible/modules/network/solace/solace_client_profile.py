@@ -46,6 +46,7 @@ description:
 
 notes:
 - "Supports Solace Cloud Brokers as well as Solace Standalone Brokers."
+- "Solace Cloud: Polls periodically until Client Profile created and only then returns."
 - "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/clientProfile)."
 - "Reference: U(https://docs.solace.com/Solace-Cloud/ght_use_rest_api_client_profiles.htm)."
 
@@ -196,12 +197,24 @@ class SolaceClientProfileTask(su.SolaceTask):
         else:
             return self._create_func(solace_config, vpn, client_profile_name, data)
 
-    def _update_func_solace_cloud(self, solace_config, lookup_item_value, settings):
+    def _update_func_solace_cloud(self, solace_config, lookup_item_value, delta_settings, current_settings):
         # POST /{paste-your-serviceId-here}/requests/clientProfileRequests
+        # for POST: add the current_settings, override with delta_settings
+        # current_settings come as a nested dict, extract to flat dict
+        profile_names = [x for x in current_settings]
+        if len(profile_names) != 1:
+            resp = dict(
+                    error="Error parsing Solace Cloud Client Profile current settings.",
+                    current_settings=current_settings
+                   )
+            return False, resp
+        else:
+            curr_settings = current_settings[profile_names[0]]
+
         mandatory = {
             self.LOOKUP_ITEM_KEY: lookup_item_value,
         }
-        data = su.merge_dicts(self.SOLACE_CLOUD_DEFAULTS, mandatory, settings)
+        data = su.merge_dicts(curr_settings, mandatory, delta_settings)
         body = su.compose_solace_cloud_body('update', 'clientProfile', data)
         path_array = [su.SOLACE_CLOUD_API_SERVICES_BASE_PATH,
                       solace_config.solace_cloud_config['service_id'],
@@ -209,16 +222,16 @@ class SolaceClientProfileTask(su.SolaceTask):
                       su.SOLACE_CLOUD_CLIENT_PROFILE_REQUESTS]
         return su.make_post_request(solace_config, path_array, body)
 
-    def _update_func(self, solace_config, vpn, lookup_item_value, settings):
+    def _update_func(self, solace_config, vpn, lookup_item_value, delta_settings, current_settings):
         # PATCH /msgVpns/{msgVpnName}/clientProfiles/{clientProfileName}
         path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.CLIENT_PROFILES, lookup_item_value]
-        return su.make_patch_request(solace_config, path_array, settings)
+        return su.make_patch_request(solace_config, path_array, delta_settings)
 
-    def update_func(self, solace_config, vpn, lookup_item_value, settings=None):
+    def update_func(self, solace_config, vpn, lookup_item_value, delta_settings=None, current_settings=None):
         if(su.is_broker_solace_cloud(solace_config)):
-            return self._update_func_solace_cloud(solace_config, lookup_item_value, settings)
+            return self._update_func_solace_cloud(solace_config, lookup_item_value, delta_settings, current_settings)
         else:
-            return self._update_func(solace_config, vpn, lookup_item_value, settings)
+            return self._update_func(solace_config, vpn, lookup_item_value, delta_settings, current_settings)
 
     def _delete_func_solace_cloud(self, solace_config, client_profile_name):
         # POST /{paste-your-serviceId-here}/requests/clientProfileRequests

@@ -97,6 +97,13 @@
           clientConnectDefaultAction: "allow"
         state: present
 
+    # - name: "Exception Test: missing semp_version"
+    #   solace_acl_subscribe_topic_exception:
+    #     # semp_version: "{{ ansible_facts.solace.about.api.sempVersion }}"
+    #     acl_profile_name: "test_ansible_solace"
+    #     name: "test/ansible/solace"
+    #     state: present
+
     - name: Add Subscribe Topic Exceptions to ACL Profile
       solace_acl_subscribe_topic_exception:
         semp_version: "{{ ansible_facts.solace.about.api.sempVersion }}"

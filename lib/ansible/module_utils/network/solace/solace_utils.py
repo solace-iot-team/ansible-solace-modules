@@ -28,38 +28,28 @@
 
 """Collection of utility classes and functions to aid the solace_* modules."""
 
-import re
 import traceback
 import logging
 import json
 import time
-import os
-import sys
-from distutils.util import strtobool
 
 HAS_IMPORT_ERROR = False
+IMPORT_ERR_TRACEBACK = None
 try:
+    from inspect import signature
+    import ansible.module_utils.network.solace.solace_common as sc
+    import ansible.module_utils.network.solace.solace_cloud_utils as scu
     from ansible.errors import AnsibleError
-    from json.decoder import JSONDecodeError
     import requests
-    import xmltodict
 except ImportError:
     HAS_IMPORT_ERROR = True
     IMPORT_ERR_TRACEBACK = traceback.format_exc()
 
-# check python version
-_PY3_MIN = sys.version_info[:2] >= (3, 6)
-if not _PY3_MIN:
-    print(
-        '\n{"failed": true, "rc": 1, "msg_hint": "Set ANSIBLE_PYTHON_INTERPRETER=path-to-python-3", '
-        '"msg": "ansible-solace requires a minimum of Python3 version 3.6. Current version: %s."}' % (''.join(sys.version.splitlines()))
-    )
-    sys.exit(1)
 
 """ Default Whitelist Keys """
 DEFAULT_WHITELIST_KEYS = ['password']
 
-""" Solace Cloud reources """
+""" Solace Cloud resources """
 SOLACE_CLOUD_API_SERVICES_BASE_PATH = 'https://api.solace.cloud/api/v0/services'
 SOLACE_CLOUD_REQUESTS = 'requests'
 SOLACE_CLOUD_CLIENT_PROFILE_REQUESTS = 'clientProfileRequests'
@@ -100,27 +90,6 @@ CERT_AUTHORITIES = 'certAuthorities'
 MQTT_SESSIONS = 'mqttSessions'
 MQTT_SESSION_SUBSCRIPTIONS = 'subscriptions'
 
-################################################################################################
-# initialize logging
-ENABLE_LOGGING = False  # False to disable
-enableLoggingEnvVal = os.getenv('ANSIBLE_SOLACE_ENABLE_LOGGING')
-loggingPathEnvVal = os.getenv('ANSIBLE_SOLACE_LOG_PATH')
-if enableLoggingEnvVal is not None and enableLoggingEnvVal != '':
-    try:
-        ENABLE_LOGGING = bool(strtobool(enableLoggingEnvVal))
-    except ValueError:
-        raise ValueError("failed: invalid value for env var: 'ANSIBLE_SOLACE_ENABLE_LOGGING={}'. use 'true' or 'false' instead.".format(enableLoggingEnvVal))
-
-if ENABLE_LOGGING:
-    if loggingPathEnvVal is not None and loggingPathEnvVal != '':
-        logFile = loggingPathEnvVal
-    logging.basicConfig(filename=logFile,
-                        level=logging.DEBUG,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(funcName)s(): %(message)s')
-    logging.info('Module start #############################################################################################')
-
-################################################################################################
-
 
 class SolaceConfig(object):
 
@@ -145,11 +114,7 @@ class SolaceConfig(object):
 class SolaceTask:
 
     def __init__(self, module):
-        if HAS_IMPORT_ERROR:
-            exceptiondata = traceback.format_exc().splitlines()
-            exceptionarray = [exceptiondata[-1]] + exceptiondata[1:-1]
-            module.fail_json(msg="Missing module: %s" % exceptionarray[0], rc=1, exception=IMPORT_ERR_TRACEBACK)
-
+        sc.module_fail_on_import_error(module, HAS_IMPORT_ERROR, IMPORT_ERR_TRACEBACK)
         self.module = module
         solace_cloud_api_token = self.module.params.get('solace_cloud_api_token', None)
         solace_cloud_service_id = self.module.params.get('solace_cloud_service_id', None)
@@ -194,7 +159,7 @@ class SolaceTask:
 
         if settings:
             # jinja treats everything as a string, so cast ints and floats
-            settings = _type_conversion(settings)
+            settings = sc.type_conversion(settings, is_broker_solace_cloud(self.solace_config))
 
         ok, resp = self.get_func(self.solace_config, *(self.get_args() + [self.lookup_item()]))
 
@@ -259,12 +224,20 @@ class SolaceTask:
 
                     if len(changed_keys):
                         delta_settings = {key: settings[key] for key in changed_keys}
-                        crud_args.append(delta_settings)
                         if not self.module.check_mode:
+                            crud_args.append(delta_settings)
+                            # Note:
+                            # only add current_settings for modules that support it.
+                            # parameter must be called 'current_settings'
+                            update_func_signature = signature(self.update_func, follow_wrapped=False)
+                            for param in update_func_signature.parameters.values():
+                                if param.name == "current_settings":
+                                    crud_args.append(current_configuration)
+
                             ok, resp = self.update_func(self.solace_config, *crud_args)
                             result['response'] = resp
                             if not ok:
-                                self.module.fail_json(msg=resp, **result)
+                                self.module.fail_json(msg="Error in update_func(). Pls raise an issue.", **result)
                         result['delta'] = delta_settings
                         result['changed'] = True
                 else:
@@ -383,8 +356,8 @@ class SolaceTask:
                             params=None
                 )
 
-                if ENABLE_LOGGING:
-                    log_http_roundtrip(resp)
+                if sc.ENABLE_LOGGING:
+                    sc.log_http_roundtrip(resp)
 
                 if resp.status_code != 200:
                     return False, parse_bad_response(resp)
@@ -420,15 +393,15 @@ def arg_spec_broker():
         secure_connection=dict(type='bool', default=False),
         username=dict(type='str', default='admin'),
         password=dict(type='str', default='admin', no_log=True),
-        timeout=dict(type='int', default='10', require=False),
+        timeout=dict(type='int', default='10', required=False),
         x_broker=dict(type='str', default='')
     )
 
 
 def arg_spec_solace_cloud_config():
     return dict(
-        solace_cloud_api_token=dict(type='str', require=False, no_log=True, default=None),
-        solace_cloud_service_id=dict(type='str', require=False, default=None)
+        solace_cloud_api_token=dict(type='str', required=False, no_log=True, default=None),
+        solace_cloud_service_id=dict(type='str', required=False, default=None)
     )
 
 
@@ -446,13 +419,13 @@ def arg_spec_virtual_router():
 
 def arg_spec_settings():
     return dict(
-        settings=dict(type='dict', require=False)
+        settings=dict(type='dict', required=False)
     )
 
 
 def arg_spec_semp_version():
     return dict(
-        semp_version=dict(type='str', require=True)
+        semp_version=dict(type='str', required=True)
     )
 
 
@@ -479,7 +452,7 @@ def arg_spec_get_list():
     return dict(
         api=dict(type='str', default='config', choices=['config', 'monitor']),
         query_params=dict(type='dict',
-                          require=False,
+                          required=False,
                           options=dict(
                             select=dict(type='list', default=[], elements='str'),
                             where=dict(type='list', default=[], elements='str')
@@ -506,18 +479,6 @@ def _build_config_dict(resp, key):
     # return an array with 1 element
     d = dict()
     d[resp[key]] = resp
-    return d
-
-
-def _type_conversion(d):
-    for k, i in d.items():
-        t = type(i)
-        if (t == str) and re.search(r'^[0-9]+$', i):
-            d[k] = int(i)
-        elif (t == str) and re.search(r'^[0-9]+\.[0-9]$', i):
-            d[k] = float(i)
-        elif t == dict:
-            d[k] = _type_conversion(i)
     return d
 
 
@@ -562,51 +523,6 @@ def get_configuration(solace_config, path_array, key):
 
 # request/response handling
 
-# data_dict = xmltodict.parse(xml_file.read())
-# json_data = json.dumps(data_dict)
-
-def log_http_roundtrip(resp):
-    if hasattr(resp.request, 'body') and resp.request.body:
-        try:
-            decoded_body = resp.request.body.decode()
-            request_body = json.loads(decoded_body)
-        except AttributeError:
-            request_body = resp.request.body
-    else:
-        request_body = "{}"
-
-    if resp.text:
-        try:
-            resp_body = json.loads(resp.text)
-        except JSONDecodeError:
-            # try XML parsing it
-            try:
-                resp_body = xmltodict.parse(resp.text)
-            except Exception:
-                # print as text at least
-                resp_body = resp.text
-    else:
-        resp_body = None
-
-    log = {
-        'request': {
-            'method': resp.request.method,
-            'url': resp.request.url,
-            'headers': dict(resp.request.headers),
-            'body': request_body
-        },
-        'response': {
-            'status_code': resp.status_code,
-            'reason': resp.reason,
-            'url': resp.url,
-            'headers': dict(resp.headers),
-            'body': resp_body
-        }
-    }
-    logging.debug("\n%s", json.dumps(log, indent=2))
-    return
-
-
 def _wait_solace_cloud_request_completed(solace_config, request_resp):
     # GET https://api.solace.cloud/api/v0/services/{paste-your-serviceId-here}/requests/{{requestId}}
     request_resp_body = json.loads(request_resp.text)
@@ -629,30 +545,37 @@ def _wait_solace_cloud_request_completed(solace_config, request_resp):
                         headers={'x-broker-name': solace_config.x_broker},
                         params=None
             )
-            if ENABLE_LOGGING:
-                log_http_roundtrip(resp)
+            if sc.ENABLE_LOGGING:
+                sc.log_http_roundtrip(resp)
             if resp.status_code != 200:
-                raise AnsibleError("GET request status error: {}".format(resp.status_code))
+                return False, resp
+                # raise AnsibleError("Solace Cloud: GET request status error: {}".format(resp.status_code))
         except requests.exceptions.ConnectionError as e:
-            raise AnsibleError("GET request status error: {}".format(str(e)))
+            raise AnsibleError("Solace Cloud: GET request status error: {}".format(str(e)))
 
         if resp.text:
             resp_body = json.loads(resp.text)
             is_completed = (resp_body['data']['adminProgress'] == 'completed')
             if is_completed:
-                return resp
+                return True, resp_body
+            else:
+                ok, err = scu.parse_resp_body_for_errs(resp_body)
+                if not ok:
+                    return False, err
         else:
-            raise AnsibleError("GET request status error: no body found in response")
+            raise AnsibleError("Solace Cloud: GET request status error: no body found in response")
         try_count += 1
         time.sleep(delay)
+    # never gets here
+    return True, None
 
 
 def _parse_response(solace_config, resp):
-    if ENABLE_LOGGING:
-        log_http_roundtrip(resp)
+    if sc.ENABLE_LOGGING:
+        sc.log_http_roundtrip(resp)
     # Solace Cloud API returns 202: accepted if long running request
     if resp.status_code == 202 and is_broker_solace_cloud(solace_config):
-        resp = _wait_solace_cloud_request_completed(solace_config, resp)
+        return _wait_solace_cloud_request_completed(solace_config, resp)
     elif resp.status_code != 200:
         return False, parse_bad_response(resp)
     return True, parse_good_response(resp)

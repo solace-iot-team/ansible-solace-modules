@@ -1,4 +1,4 @@
-
+#!/bin/bash
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -23,34 +23,17 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
--
-  name: "Check/wait until brokers available"
-  hosts: "{{ brokers }}"
-  gather_facts: no
-  any_errors_fatal: true
-  serial: 1
-  module_defaults:
-    solace_get_available:
-      host: "{{ sempv2_host }}"
-      port: "{{ sempv2_port }}"
-      secure_connection: "{{ sempv2_is_secure_connection }}"
-      username: "{{ sempv2_username }}"
-      password: "{{ sempv2_password }}"
-      timeout: "{{ sempv2_timeout }}"
+###############################################################################################
+# sets the base env for the test
+#
+# call: source ./_run.env.sh
+#
 
-  tasks:
+export AS_TEST_SCRIPT_NAME=$(basename $(test -L "$0" && readlink "$0" || echo "$0"));
+export AS_TEST_SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+export AS_TEST_PROJECT_HOME=${AS_TEST_SCRIPT_PATH%%/test-test/*}
+export AS_TEST_HOME="$AS_TEST_PROJECT_HOME/test-test"
 
-    - name: "Test Imports / Version"
-      solace_get_available:
-      register: _result
-      failed_when: "_result.rc != 0"
-
-    - name: "Pause Until Broker/Service available"
-      solace_get_available:
-      register: _result
-      until: "_result.rc == 0 and _result.is_available == True"
-      retries: 25 # 25 * 5 seconds
-      delay: 5 # Every 5 seconds
 
 ###
 # The End.

@@ -1,5 +1,23 @@
 # Release Notes
 
+## Version: 0.7.0
+
+Release Purpose: Create/Delete Solace Cloud Services
+
+### Modules:
+
+      new:
+        - solace_cloud_service
+        - solace_cloud_get_service
+        - solace_cloud_account_gather_facts
+        - solace_cloud_get_facts
+      updated:
+        - none.
+
+### Framework:
+    - solace_cloud_utils: new utility module for solace cloud
+    - solace_common: new common functions across solace_cloud_utils and solace_utils
+
 ## Version: 0.6.1
 
 Release Purpose: Maintenance Release & Links to `ansible-solace-samples`

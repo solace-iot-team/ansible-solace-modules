@@ -23,57 +23,31 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-clear
-echo; echo "##############################################################################################################"
-echo
-
-source ./_run.env.sh
+SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 
 ##############################################################################################################################
-# Choose Environment
+# Settings
 
-# select here or interactively
-  export AS_TEST_RUNNER_ENV="dev"
-  #export AS_TEST_RUNNER_ENV="package"
-
-source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
-
-  ############################################################################################################################
-  # SELECT
-    # logging
-    export ANSIBLE_SOLACE_ENABLE_LOGGING=true
-    # select inventory
-    export AS_TEST_BROKER_INVENTORY="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-    #export AS_TEST_BROKER_INVENTORY=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
-    # select broker(s) inside inventory
-    export AS_TEST_BROKERS="all"
-  # END SELECT
-
-
-x=$(showEnv)
-x=$(wait4Key)
-
-##############################################################################################################################
-# Prepare
-
-ANSIBLE_SOLACE_LOG_FILE="$AS_TEST_SCRIPT_PATH/ansible-solace.log"
-rm -f $ANSIBLE_SOLACE_LOG_FILE
-
-$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $AS_TEST_BROKER_INVENTORY
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  runCallDirs=(
+    "solace_cloud_service"
+  )
 
 ##############################################################################################################################
 # Run
+for runCallDir in ${runCallDirs[@]}; do
 
-playbook="./playbook.yml"
+  runScript="$SCRIPT_PATH/$runCallDir/_run.call.sh"
 
-# --step --check -vvv
-ansible-playbook -i $AS_TEST_BROKER_INVENTORY \
-                  $playbook \
-                  --extra-vars "brokers=$AS_TEST_BROKERS" \
-                  -vvv
+  echo; echo "##############################################################################################################"
+  echo "# script: $SCRIPT_PATH"
+  echo "# Running Tests: $runCallDir"
+  echo "# calling: $runScript"
 
-if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
+  $runScript
+
+  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
+
+done
 
 ###
 # The End.

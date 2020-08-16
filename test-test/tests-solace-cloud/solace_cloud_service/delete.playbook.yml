@@ -24,33 +24,42 @@
 # ---------------------------------------------------------------------------------------------
 
 -
-  name: "Check/wait until brokers available"
-  hosts: "{{ brokers }}"
+  name: "Create / Get / Destroy Solace Cloud Service"
+  hosts: "{{ SOLACE_CLOUD_ACCOUNTS }}"
   gather_facts: no
   any_errors_fatal: true
-  serial: 1
-  module_defaults:
-    solace_get_available:
-      host: "{{ sempv2_host }}"
-      port: "{{ sempv2_port }}"
-      secure_connection: "{{ sempv2_is_secure_connection }}"
-      username: "{{ sempv2_username }}"
-      password: "{{ sempv2_password }}"
-      timeout: "{{ sempv2_timeout }}"
 
   tasks:
 
-    - name: "Test Imports / Version"
-      solace_get_available:
-      register: _result
-      failed_when: "_result.rc != 0"
+    - name: "Solace Cloud Account: Gather Facts"
+      solace_cloud_account_gather_facts:
+        api_token: "{{ api_token_all_permissions }}"
+        account_name: "{{ inventory_hostname }}"
+        return_format: dict
+      register: sc_account_facts_result
 
-    - name: "Pause Until Broker/Service available"
-      solace_get_available:
-      register: _result
-      until: "_result.rc == 0 and _result.is_available == True"
-      retries: 25 # 25 * 5 seconds
-      delay: 5 # Every 5 seconds
+    - name: "Save Facts: Solace Cloud Account"
+      local_action:
+        module: copy
+        content: "{{ sc_account_facts_result | to_nice_json }}"
+        dest: "./tmp/facts.solace_cloud_account.{{ inventory_hostname }}.json"
+
+    - name: "Set Fact: Solace Cloud Account Services"
+      set_fact:
+        sca_services_facts: "{{ sc_account_facts_result.ansible_facts.solace_cloud_accounts[inventory_hostname].services }}"
+      no_log: true
+
+    - include_vars:
+        file: "./lib/solace-cloud-services.vars.yml"
+        name: sc_services
+
+    - name: "Solace Cloud Service: Delete Tasks"
+      include_tasks: ./local-lib/delete.tasks.yml
+      register: delete_task_result
+      loop: "{{ sc_services.solace_cloud_services }}"
+      loop_control:
+        loop_var: sc_service
+        index_var: sc_service_i
 
 ###
 # The End.

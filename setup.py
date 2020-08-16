@@ -29,16 +29,16 @@ with open("pypi/README.md", "r") as fh:
 
 setuptools.setup(
     name="ansible-solace",
-    version="0.6.1",
+    version="0.7.0",
     author="Solace Corporation",
     author_email="ricardo.gomez-ulmke@solace.com",
-    description="Ansible modules to configure Solace PubSub+ event brokers with SEMP(v2).",
+    description="Ansible modules to configure Solace PubSub+ event brokers with SEMP.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/solace-iot-team/ansible-solace",
+    url="https://github.com/solace-iot-team/ansible-solace-modules",
     project_urls={
-        "Source": "https://github.com/solace-iot-team/ansible-solace",
-        "Tracker": "https://github.com/solace-iot-team/ansible-solace/issues",
+        "Source": "https://github.com/solace-iot-team/ansible-solace-modules",
+        "Tracker": "https://github.com/solace-iot-team/ansible-solace-modules/issues",
     },
     license='MIT License',
     package_dir={'': 'lib'},
@@ -60,5 +60,5 @@ setuptools.setup(
         'requests>=2.24.0',
         'xmltodict>=0.12.0'
     ],
-    keywords='solace sempv2 ansible pubsub+'
+    keywords='solace semp ansible pubsub+'
 )

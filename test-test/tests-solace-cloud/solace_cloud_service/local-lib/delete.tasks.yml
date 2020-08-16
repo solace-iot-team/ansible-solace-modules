@@ -1,4 +1,3 @@
-
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -23,34 +22,37 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
--
-  name: "Check/wait until brokers available"
-  hosts: "{{ brokers }}"
-  gather_facts: no
-  any_errors_fatal: true
-  serial: 1
-  module_defaults:
-    solace_get_available:
-      host: "{{ sempv2_host }}"
-      port: "{{ sempv2_port }}"
-      secure_connection: "{{ sempv2_is_secure_connection }}"
-      username: "{{ sempv2_username }}"
-      password: "{{ sempv2_password }}"
-      timeout: "{{ sempv2_timeout }}"
 
-  tasks:
+---
+    # get the serviceId from the facts
+    - name: "Get the serviceId from Solace Cloud Account Facts - By Name"
+      set_fact:
+        sc_service_id: "{{ sca_services_facts[sc_service.name].serviceId | default(None) }}"
 
-    - name: "Test Imports / Version"
-      solace_get_available:
-      register: _result
-      failed_when: "_result.rc != 0"
+    - debug:
+        msg:
+          - "Deleting Solace Cloud Service ..."
+          - "{{ sc_service }}"
+          - "serviceId={{ sc_service_id | default(None) }}"
+          - "index: {{ sc_service_i }}"
 
-    - name: "Pause Until Broker/Service available"
-      solace_get_available:
-      register: _result
-      until: "_result.rc == 0 and _result.is_available == True"
-      retries: 25 # 25 * 5 seconds
-      delay: 5 # Every 5 seconds
+    # # DEBUG
+    # - meta: end_play
+
+    - name: "Delete Solace Cloud Service by Name"
+      solace_cloud_service:
+        api_token: "{{ api_token_all_permissions }}"
+        name: "{{ sc_service.name }}"
+        state: absent
+      when: sc_service_i is even
+
+    - name: "Delete Solace Cloud Service by Service Id"
+      solace_cloud_service:
+        api_token: "{{ api_token_all_permissions }}"
+        name: "{{ sc_service.name }}" # leaving it in to test precendence of service_id
+        service_id: "{{ sc_service_id }}"
+        state: absent
+      when: sc_service_i is odd
 
 ###
 # The End.

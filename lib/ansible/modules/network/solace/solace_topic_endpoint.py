@@ -153,9 +153,9 @@ def run_module():
         secure_connection=dict(type='bool', default=False),
         username=dict(type='str', default='admin'),
         password=dict(type='str', default='admin', no_log=True),
-        settings=dict(type='dict', require=False),
+        settings=dict(type='dict', required=False),
         state=dict(default='present', choices=['absent', 'present']),
-        timeout=dict(default='1', require=False),
+        timeout=dict(default='1', required=False),
         x_broker=dict(type='str', default='')
     )
     module = AnsibleModule(

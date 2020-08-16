@@ -1,4 +1,3 @@
-
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -22,35 +21,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
-
--
-  name: "Check/wait until brokers available"
-  hosts: "{{ brokers }}"
-  gather_facts: no
-  any_errors_fatal: true
-  serial: 1
-  module_defaults:
-    solace_get_available:
-      host: "{{ sempv2_host }}"
-      port: "{{ sempv2_port }}"
-      secure_connection: "{{ sempv2_is_secure_connection }}"
-      username: "{{ sempv2_username }}"
-      password: "{{ sempv2_password }}"
-      timeout: "{{ sempv2_timeout }}"
-
-  tasks:
-
-    - name: "Test Imports / Version"
-      solace_get_available:
-      register: _result
-      failed_when: "_result.rc != 0"
-
-    - name: "Pause Until Broker/Service available"
-      solace_get_available:
-      register: _result
-      until: "_result.rc == 0 and _result.is_available == True"
-      retries: 25 # 25 * 5 seconds
-      delay: 5 # Every 5 seconds
-
+#
+# list of services to run tests with
+#
+---
+  solace_cloud_services:
+    - name: "Ansible-Solace-Test-Service-1"
+      msgVpnName: as-test-service-1
+      datacenterId: "aws-eu-west-2a"
+      serviceTypeId: "enterprise"
+      serviceClassId: "enterprise-250-nano"
+    - name: "Ansible-Solace-Test-Service-2"
+      msgVpnName: as-test-service-2
+      datacenterId: "aws-eu-west-2a"
+      serviceTypeId: "enterprise"
+      serviceClassId: "enterprise-250-nano"
 ###
 # The End.
