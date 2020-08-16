@@ -29,13 +29,13 @@ with open("pypi/README.md", "r") as fh:
 
 setuptools.setup(
     name="ansible-solace",
-    version="0.7.0",
+    version="0.7.1",
     author="Solace Corporation",
     author_email="ricardo.gomez-ulmke@solace.com",
     description="Ansible modules to configure Solace PubSub+ event brokers with SEMP.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/solace-iot-team/ansible-solace-modules",
+    url="https://github.com/solace-iot-team/ansible-solace",
     project_urls={
         "Source": "https://github.com/solace-iot-team/ansible-solace-modules",
         "Tracker": "https://github.com/solace-iot-team/ansible-solace-modules/issues",
