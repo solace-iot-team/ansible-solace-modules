@@ -72,15 +72,8 @@ ansible-playbook -i $AS_TEST_BROKER_INVENTORY \
                   $playbook \
                   --extra-vars "brokers=$AS_TEST_BROKERS" \
                   -vvv
-if [[ $? != 0 ]]; then
 
-  echo "ERROR";
-  echo; echo "Show the log?"
-  echo; read -p 'Enter to continue, Ctrl-c to abort: ' continue; echo; echo
-
-  less $ANSIBLE_SOLACE_LOG_FILE
-
-fi
+if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
 
 ###
 # The End.
