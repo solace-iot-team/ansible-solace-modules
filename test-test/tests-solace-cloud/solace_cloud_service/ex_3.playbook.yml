@@ -24,7 +24,7 @@
 # ---------------------------------------------------------------------------------------------
 
 -
-  name: "Exception_Test_3: solace_cloud_service: delta changes"
+  name: "Exception_Test_3: solace_cloud_service: test for Delta Changes"
   hosts: "{{ SOLACE_CLOUD_ACCOUNTS }}"
   gather_facts: no
   any_errors_fatal: true
@@ -34,55 +34,97 @@
     # DEBUG
     # - meta: end_play
 
-TODO: build me
+    - include_vars:
+        file: "./lib/solace-cloud-services.vars.yml"
+        name: sc_services
 
-    - name: "Update Solace Cloud Service"
+    # - debug:
+    #     msg: "{{ sc_services }}"
+
+    - set_fact:
+        sc_service: "{{ sc_services.solace_cloud_services[0] }}"
+        sc_service_name: as-test-delta-settings
+        sc_service_vpn: as-test-delta-settings
+
+    - name: "Exception_Test: Create New Service"
       solace_cloud_service:
-        api_token: "{{ api_token }}"
-        name: "{{ sc_service.name }}"
+        api_token: "{{ api_token_all_permissions }}"
+        name: "{{ sc_service_name }}"
         settings:
-          msgVpnName: "{{ sc_service.msgVpnName}}"
+          msgVpnName: "{{ sc_service_vpn }}"
           datacenterId: "{{ sc_service.datacenterId }}"
           serviceTypeId: "{{ sc_service.serviceTypeId}}"
           serviceClassId: "{{ sc_service.serviceClassId }}"
-          # serviceClassId: "changed_serviceClassId"
-          # changedKey_0: value_changedKey_0
-          # TODO: delta calculation not working
           attributes:
-            # newKey_1: newKey_1_value
             customizedMessagingPorts:
-              # newKey_2: newKey_2_value
-              # serviceSmfPlainTextListenPort: 1111
-              # serviceSmfCompressedListenPort: 2222
-              # serviceSmfTlsListenPort: 3333
               serviceSmfPlainTextListenPort: 55555
               serviceSmfCompressedListenPort: 55003
               serviceSmfTlsListenPort: 55443
         state: present
       register: result
 
+    - set_fact:
+        sc_service_id: "{{ result.response.serviceId }}"
 
-    - name: "Exception_Test: update service"
+    - name: "Exception_Test: Wait for Service Provisioning to Complete"
+      solace_cloud_get_service:
+        api_token: "{{ api_token_all_permissions }}"
+        service_id: "{{ sc_service_id }}"
+      register: result
+      until: "result.rc != 0 or result.response.creationState == 'completed'"
+      # wait max for 40 * 30 seconds, then give up
+      retries: 40
+      delay: 30 # Every 30 seconds
+      no_log: true
+
+    - name: "Exception_Test: No Update"
+      solace_cloud_service:
+        api_token: "{{ api_token_all_permissions }}"
+        name: "{{ sc_service.name }}"
+        settings:
+          msgVpnName: "{{ sc_service.msgVpnName}}"
+          datacenterId: "{{ sc_service.datacenterId }}"
+          serviceTypeId: "{{ sc_service.serviceTypeId}}"
+          serviceClassId: "{{ sc_service.serviceClassId }}"
+        state: present
+      register: result
+
+    - name: "Exception_Test: Update msgVpnName"
       solace_cloud_service:
         api_token: "{{ api_token_all_permissions }}"
         name: "Ansible-Solace-Test-Service-1"
         settings:
-          msgVpnName: as-test-service-1-u
-          datacenterId: "aws-eu-west-2a"
-          serviceTypeId: "enterprise"
-          serviceClassId: "enterprise-250-nano"
+          msgVpnName: "{{ sc_service.msgVpnName}}-update"
+          datacenterId: "{{ sc_service.datacenterId }}"
+          serviceTypeId: "{{ sc_service.serviceTypeId}}"
+          serviceClassId: "{{ sc_service.serviceClassId }}"
         state: present
       register: result
-      failed_when: result.rc != 1 or result.delta == None
+      failed_when: result.rc != 1 or result.delta == None or result.delta.msgVpnName == None
 
-    - name: "Exception_Test: Delete by Service Id & name"
+    - name: "Exception_Test: Update Ports"
       solace_cloud_service:
         api_token: "{{ api_token_all_permissions }}"
-        name: "Ansible-Solace-Test-Service-1"
-        service_id: "xxxxx"
+        name: "{{ sc_service_name }}"
+        settings:
+          msgVpnName: "{{ sc_service_vpn }}"
+          datacenterId: "{{ sc_service.datacenterId }}"
+          serviceTypeId: "{{ sc_service.serviceTypeId}}"
+          serviceClassId: "{{ sc_service.serviceClassId }}"
+          attributes:
+            customizedMessagingPorts:
+              serviceSmfPlainTextListenPort: 1111
+        state: present
+      register: result
+      failed_when: result.rc != 1 or result.delta.attributes.customizedMessagingPorts.serviceSmfPlainTextListenPort == None
+
+    - name: "Exception_Test: Delete by Service Id"
+      solace_cloud_service:
+        api_token: "{{ api_token_all_permissions }}"
+        service_id: "{{ sc_service_id }}"
         state: absent
       register: result
-      failed_when: result.rc != 1
+      failed_when: result.rc != 0
 
 ###
 # The End.

@@ -50,12 +50,14 @@ rm -f $SCRIPT_PATH/tmp/*.*
 ##############################################################################################################################
 # Run
 for playbook in ${playbooks[@]}; do
+
   ansible-playbook \
                     -i $solaceCloudAccountsInventoryFile \
                     $playbook \
-                    --extra-vars "SOLACE_CLOUD_ACCOUNTS=$solaceCloudAccounts" \
+                    --extra-vars "SOLACE_CLOUD_ACCOUNTS=$solaceCloudAccounts"
 
   if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
+
 done
 
 

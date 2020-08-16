@@ -24,7 +24,7 @@
 # ---------------------------------------------------------------------------------------------
 
 -
-  name: "Exception_Test_2: solace_cloud_service: various"
+  name: "Exception_Test_1: solace_cloud_service: various"
   hosts: "{{ SOLACE_CLOUD_ACCOUNTS }}"
   gather_facts: no
   any_errors_fatal: true
