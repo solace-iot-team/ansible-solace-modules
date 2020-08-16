@@ -28,7 +28,6 @@
 
 """Collection of utility classes and functions to aid the solace_* modules."""
 
-import re
 import traceback
 import logging
 import json
@@ -37,6 +36,7 @@ import time
 HAS_IMPORT_ERROR = False
 IMPORT_ERR_TRACEBACK = None
 try:
+    from inspect import signature
     import ansible.module_utils.network.solace.solace_common as sc
     import ansible.module_utils.network.solace.solace_cloud_utils as scu
     from ansible.errors import AnsibleError
@@ -224,12 +224,20 @@ class SolaceTask:
 
                     if len(changed_keys):
                         delta_settings = {key: settings[key] for key in changed_keys}
-                        crud_args.append(delta_settings)
                         if not self.module.check_mode:
+                            crud_args.append(delta_settings)
+                            # Note:
+                            # only add current_settings for modules that support it.
+                            # parameter must be called 'current_settings'
+                            update_func_signature = signature(self.update_func, follow_wrapped=False)
+                            for param in update_func_signature.parameters.values():
+                                if param.name == "current_settings":
+                                    crud_args.append(current_configuration)
+
                             ok, resp = self.update_func(self.solace_config, *crud_args)
                             result['response'] = resp
                             if not ok:
-                                self.module.fail_json(msg=resp, **result)
+                                self.module.fail_json(msg="Error in update_func(). Pls raise an issue.", **result)
                         result['delta'] = delta_settings
                         result['changed'] = True
                 else:
