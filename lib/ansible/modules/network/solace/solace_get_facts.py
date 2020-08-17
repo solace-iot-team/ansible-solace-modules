@@ -30,7 +30,6 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
-import ansible.module_utils.network.solace.solace_utils as su
 import ansible.module_utils.network.solace.solace_common as sc
 from ansible.module_utils.basic import AnsibleModule
 import traceback
@@ -88,12 +87,16 @@ options:
       - get_virtualRouterName
       - get_serviceSMFMessagingEndpoints
       - get_bridge_remoteMsgVpnLocations
+      - get_allClientConnectionDetails
     functions:
       get_bridge_remoteMsgVpnLocations:
         description:
             - "Retrieve enabled remote message vpn locations (plain, secured, compressed) for the service/broker."
             - "For Solace Cloud: {hostname}:{port}."
             - "For broker: v:{virtualRouterName}."
+      get_allClientConnectionDetails:
+        description:
+            - "Retrieve all enabled client connection details for the various protocols for the service/broker."
 
 seealso:
 - module: solace_gather_facts
@@ -209,6 +212,7 @@ class SolaceGetFactsTask():
 
         hostvars = self.module.params['hostvars']
         host = self.module.params['host']
+        vpn = self.module.params['msg_vpn']
         fields = self.module.params['fields']
         field_funcs = self.module.params['field_funcs']
         # either fields or field_funcs must have at least one element
@@ -233,6 +237,10 @@ class SolaceGetFactsTask():
             return False, fail_reason
 
         search_object = hostvars[host]['ansible_facts']['solace']
+
+        if not _check_vpn_exists(search_object, vpn):
+            fail_reason = "Could not find vpn: '{}' in 'ansible_facts.solace' for host: '{}'.".format(vpn, host)
+            return False, fail_reason
 
         facts = dict()
 
@@ -259,6 +267,8 @@ class SolaceGetFactsTask():
                         field, value = _get_serviceSMFMessagingEndpoints(search_object)
                     elif field_func == 'get_bridge_remoteMsgVpnLocations':
                         field, value = _get_bridge_remoteMsgVpnLocations(search_object)
+                    elif field_func == 'get_allClientConnectionDetails':
+                        field, value = _get_allClientConnectionDetails(search_object, vpn)
                     else:
                         fail_reason = "Unknown field_func: '{}'. Pls check the documentation for supported field functions: 'ansible-doc solace_get_facts'.".format(field_func)
                         return False, fail_reason
@@ -282,6 +292,64 @@ class SolaceGetFactsTask():
 #
 # field funcs
 #
+
+
+import logging
+
+
+def _check_vpn_exists(search_dict, search_vpn):
+    if not search_vpn:
+        return True
+    if search_dict['isSolaceCloud']:
+        message_vpn_attributes_dict = _get_sc_message_vpn_attributes_dict(search_dict)
+        vpn = message_vpn_attributes_dict['vpnName']
+        return (vpn == search_vpn)
+    else:
+        # for SEMPv1:
+        vpns = search_dict['about']['user']['msgVpns']
+        for vpn in vpns:
+            if vpn['msgVpnName'] == search_vpn:
+                return True
+        # TODO: for SEMPv2:
+        # once solace_gather_facts is extended
+    return False
+
+
+def _get_allClientConnectionDetails(search_dict, vpn=None):
+    ccds = dict()
+    if search_dict['isSolaceCloud']:
+        # msg_vpn_name = _get_field(search_dict, field='msgVpnName'):
+        # TODO: needs to find it for all vpns: "vpn-name": "default",
+        smf_dict = _get_sc_messaging_protocol_dict(search_dict, 'SMF')
+        mqtt_dict = _get_sc_messaging_protocol_dict(search_dict, 'MQTT')
+        amqp_dict = _get_sc_messaging_protocol_dict(search_dict, 'AMQP')
+        rest_dict = _get_sc_messaging_protocol_dict(search_dict, 'REST')
+        jms_dict = _get_sc_messaging_protocol_dict(search_dict, 'JMS')
+        web_msg_dict = _get_sc_messaging_protocol_dict(search_dict, 'Web Messaging')
+        message_vpn_attributes_dict = _get_sc_message_vpn_attributes_dict(search_dict)
+        trust_store_uri = message_vpn_attributes_dict['truststoreUri']
+    else:
+        logging.debug("\n\n broker: search_dict=\n%s\n\n", json.dumps(search_dict, indent=2))
+        # TODO: needs to find it for all vpns: "vpn-name": "default",
+        # TODO: only retrieve if vpn-name exists (relevant for AMQP)
+
+        smf_dict = _get_broker_service_dict(search_dict, field="name", value='SMF', strict=False)
+        mqtt_dict = _get_broker_service_dict(search_dict, field="name", value='MQTT', strict=False)
+        amqp_dict = _get_broker_service_dict(search_dict, field="name", value='AMQP', strict=False)
+        rest_dict = _get_broker_service_dict(search_dict, field="name", value='REST', strict=False)
+        jms_dict = _get_broker_service_dict(search_dict, field="name", value='JMS', strict=False)
+        web_msg_dict = _get_broker_service_dict(search_dict, field="name", value='WEB', strict=False)
+        trust_store_uri = None
+
+    ccds['SMF'] = smf_dict
+    ccds['MQTT'] = mqtt_dict
+    ccds['AMQP'] = amqp_dict
+    ccds['REST'] = rest_dict
+    ccds['JMS'] = jms_dict
+    ccds['WebMessaging'] = web_msg_dict
+    if trust_store_uri:
+        ccds['TrustStore'] = dict(uri=trust_store_uri)
+    return 'clientConnectionDetails', ccds
 
 
 def _get_bridge_remoteMsgVpnLocations(search_dict):
@@ -453,11 +521,22 @@ def _get_virtualRouterName(search_dict):
 # field func helpers
 #
 
-def _get_broker_service_dict(search_dict, field, value):
+def _get_broker_service_dict(search_dict, field, value, strict=True):
     service_dict = _find_nested_dict(search_dict, field, value)
     if service_dict is None:
-        raise AnsibleError("Could not find '{}={}' in search_dict in broker service ansible_facts. Pls raise an issue.".format(field, value))
+        if strict:
+            raise AnsibleError("Could not find '{}={}' in search_dict in broker service ansible_facts. Pls raise an issue.".format(field, value))
+        else:
+            service_dict = dict(enabled=False)
     return service_dict
+
+
+def _get_sc_message_vpn_attributes_dict(search_dict):
+    element = "msgVpnAttributes"
+    message_vpn_attributes_dict = _get_field(search_dict, element)
+    if message_vpn_attributes_dict is None:
+        raise AnsibleError("Could not find '{}' in Solace Cloud service ansible_facts. API may have changed. Pls raise an issue.".format(element))
+    return message_vpn_attributes_dict
 
 
 def _get_sc_messaging_protocols_dict(search_dict):
@@ -466,6 +545,18 @@ def _get_sc_messaging_protocols_dict(search_dict):
     if messaging_protocols_dict is None:
         raise AnsibleError("Could not find '{}' in Solace Cloud service ansible_facts. API may have changed. Pls raise an issue.".format(element))
     return messaging_protocols_dict
+
+
+def _get_sc_messaging_protocol_dict(search_dict, protocol):
+    messaging_protocols_dict = _get_sc_messaging_protocols_dict(search_dict)
+    protocol_dict = _find_nested_dict(messaging_protocols_dict, field="name", value=protocol)
+    if protocol_dict is None:
+        protocol_dict = dict(
+            enabled=False
+        )
+    else:
+        protocol_dict['enabled'] = True
+    return protocol_dict
 
 
 def _get_sc_messaging_protocols_smf_dict(search_dict):
@@ -554,9 +645,12 @@ def run_module():
         hostvars=dict(type='dict', required=True),
         host=dict(type='str', required=True),
         fields=dict(type='list', required=False, default=[], elements='str'),
-        field_funcs=dict(type='list', required=False, default=[], elements='str')
+        field_funcs=dict(type='list', required=False, default=[], elements='str'),
+        msg_vpn=dict(type='str', required=False, default=None)
     )
-    arg_spec = su.arg_spec_solace_cloud_config()
+    arg_spec = dict()
+    # TODO: check if we need the msg_vpn with multi-vpn brokers
+    # arg_spec = su.arg_spec_vpn()
     # module_args override standard arg_specs
     arg_spec.update(module_args)
 
