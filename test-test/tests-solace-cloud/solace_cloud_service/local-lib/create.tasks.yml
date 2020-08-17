@@ -43,6 +43,7 @@
           datacenterId: "{{ sc_service.datacenterId }}"
           serviceTypeId: "{{ sc_service.serviceTypeId}}"
           serviceClassId: "{{ sc_service.serviceClassId }}"
+          attributes: "{{ sc_service.attributes | default(omit) }}"
         state: present
       register: result
 

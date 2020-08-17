@@ -61,8 +61,8 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
       "./ex_1.playbook.yml"
       "./ex_2.playbook.yml"
       "./ex_3.playbook.yml"
-      "./delete.playbook.yml"
-      "./delete.playbook.yml" # run it twice, to test idempotency
+      # "./delete.playbook.yml"
+      # "./delete.playbook.yml" # run it twice, to test idempotency
     )
 
   # END SELECT
@@ -87,7 +87,7 @@ for playbook in ${playbooks[@]}; do
                     --extra-vars "SOLACE_CLOUD_ACCOUNTS=$solaceCloudAccounts"
 
   if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
-  
+
 done
 
 ###

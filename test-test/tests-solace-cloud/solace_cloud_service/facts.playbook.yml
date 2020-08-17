@@ -95,6 +95,12 @@
       loop_control:
         loop_var: sc_service
 
+    - name: "Loop: Get Client Connection Params for each Service in the Solace Cloud Account"
+      include_tasks: ./local-lib/get-client-con-params.tasks.yml
+      loop: "{{ sca_services_list_facts }}"
+      loop_control:
+        loop_var: sc_service
+
 
 ###
 # The End.
