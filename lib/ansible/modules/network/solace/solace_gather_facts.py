@@ -82,7 +82,7 @@ EXAMPLES = '''
   gather_facts: no
   any_errors_fatal: true
   module_defaults:
-    solace_get_facts:
+    solace_gather_facts:
       host: "{{ sempv2_host }}"
       port: "{{ sempv2_port }}"
       secure_connection: "{{ sempv2_is_secure_connection }}"
@@ -95,7 +95,7 @@ EXAMPLES = '''
   tasks:
 
     - name: Gather Solace Facts
-      solace_get_facts:
+      solace_gather_facts:
 
     - name: "Save hostvars to ./hostvars.json"
       local_action:
