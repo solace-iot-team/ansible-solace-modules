@@ -294,9 +294,6 @@ class SolaceGetFactsTask():
 #
 
 
-import logging
-
-
 def _check_vpn_exists(search_dict, search_vpn):
     if not search_vpn:
         return True
@@ -329,7 +326,7 @@ def _get_allClientConnectionDetails(search_dict, vpn=None):
         message_vpn_attributes_dict = _get_sc_message_vpn_attributes_dict(search_dict)
         trust_store_uri = message_vpn_attributes_dict['truststoreUri']
     else:
-        logging.debug("\n\n broker: search_dict=\n%s\n\n", json.dumps(search_dict, indent=2))
+        # logging.debug("\n\n broker: search_dict=\n%s\n\n", json.dumps(search_dict, indent=2))
         # TODO: needs to find it for all vpns: "vpn-name": "default",
         # TODO: only retrieve if vpn-name exists (relevant for AMQP)
 
@@ -337,7 +334,9 @@ def _get_allClientConnectionDetails(search_dict, vpn=None):
         mqtt_dict = _get_broker_service_dict(search_dict, field="name", value='MQTT', strict=False)
         amqp_dict = _get_broker_service_dict(search_dict, field="name", value='AMQP', strict=False)
         rest_dict = _get_broker_service_dict(search_dict, field="name", value='REST', strict=False)
-        jms_dict = _get_broker_service_dict(search_dict, field="name", value='JMS', strict=False)
+        # using SEMPv1: assuming same as SMF, check with SEMPv2
+        # jms_dict = _get_broker_service_dict(search_dict, field="name", value='JMS', strict=False)
+        jms_dict = None
         web_msg_dict = _get_broker_service_dict(search_dict, field="name", value='WEB', strict=False)
         trust_store_uri = None
 
