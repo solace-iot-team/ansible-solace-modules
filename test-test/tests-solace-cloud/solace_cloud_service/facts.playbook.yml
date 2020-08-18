@@ -45,6 +45,7 @@
         module: copy
         content: "{{ sca_facts_dict_result | to_nice_json }}"
         dest: "./tmp/facts.dict.solace_cloud_account.{{ inventory_hostname }}.json"
+      changed_when: false
 
     - name: "Set Fact as Dict: Solace Cloud Account Services"
       set_fact:
@@ -63,6 +64,7 @@
         module: copy
         content: "{{ sca_facts_list_result | to_nice_json }}"
         dest: "./tmp/facts.list.solace_cloud_account.{{ inventory_hostname }}.json"
+      changed_when: false
 
     - name: "Set Fact: Solace Cloud Account Services"
       set_fact:
