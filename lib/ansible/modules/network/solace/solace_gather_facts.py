@@ -313,7 +313,8 @@ def run_module():
 
     result = dict(
         changed=False,
-        ansible_facts=dict()
+        ansible_facts=dict(),
+        rc=0
     )
 
     solace_task = SolaceGatherFactsTask(module)
