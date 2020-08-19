@@ -1,5 +1,17 @@
 # Release Notes
 
+## Version: 0.7.1
+
+Release Purpose: Maintenance release.
+
+### Modules:
+
+      new:
+        - none.
+      updated:
+        - solace_get_facts:
+          - new function: get_allClientConnectionDetails
+
 ## Version: 0.7.0
 
 Release Purpose: Create/Delete Solace Cloud Services
