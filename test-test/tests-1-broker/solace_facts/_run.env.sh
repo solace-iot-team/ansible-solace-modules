@@ -1,3 +1,4 @@
+#!/bin/bash
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -21,35 +22,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
+
+###############################################################################################
+# sets the base env for the test
 #
-# list of services to run tests with
+# call: source ./_run.env.sh
 #
----
-  solace_cloud_services:
-    - name: "Ansible-Solace-Test-Service-1"
-      msgVpnName: as-test-service-1
-      datacenterId: "aws-eu-west-2a"
-      serviceTypeId: "enterprise"
-      serviceClassId: "enterprise-250-nano"
-      attributes:
-        customizedMessagingPorts:
-          serviceSmfPlainTextListenPort: 55555
-          serviceSmfCompressedListenPort: 55003
-          serviceSmfTlsListenPort: 55443
-          serviceAmqpPlainTextListenPort: 0
-          serviceAmqpTlsListenPort: 0
-          serviceMqttPlainTextListenPort: 1883
-          serviceMqttTlsListenPort: 8883
-          serviceMqttTlsWebSocketListenPort: 0
-          serviceMqttWebSocketListenPort: 0
-          serviceRestIncomingPlainTextListenPort: 0
-          serviceRestIncomingTlsListenPort: 0
-          serviceWebPlainTextListenPort: 0
-          serviceWebTlsListenPort: 0
-    - name: "Ansible-Solace-Test-Service-2"
-      msgVpnName: as-test-service-2
-      datacenterId: "aws-eu-west-2a"
-      serviceTypeId: "enterprise"
-      serviceClassId: "enterprise-250-nano"
+
+export AS_TEST_SCRIPT_NAME=$(basename $(test -L "$0" && readlink "$0" || echo "$0"));
+export AS_TEST_SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+export AS_TEST_PROJECT_HOME=${AS_TEST_SCRIPT_PATH%%/test-test/*}
+export AS_TEST_HOME="$AS_TEST_PROJECT_HOME/test-test"
+
+
 ###
 # The End.

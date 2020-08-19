@@ -1,3 +1,4 @@
+#!/bin/bash
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -21,35 +22,36 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
-#
-# list of services to run tests with
-#
----
-  solace_cloud_services:
-    - name: "Ansible-Solace-Test-Service-1"
-      msgVpnName: as-test-service-1
-      datacenterId: "aws-eu-west-2a"
-      serviceTypeId: "enterprise"
-      serviceClassId: "enterprise-250-nano"
-      attributes:
-        customizedMessagingPorts:
-          serviceSmfPlainTextListenPort: 55555
-          serviceSmfCompressedListenPort: 55003
-          serviceSmfTlsListenPort: 55443
-          serviceAmqpPlainTextListenPort: 0
-          serviceAmqpTlsListenPort: 0
-          serviceMqttPlainTextListenPort: 1883
-          serviceMqttTlsListenPort: 8883
-          serviceMqttTlsWebSocketListenPort: 0
-          serviceMqttWebSocketListenPort: 0
-          serviceRestIncomingPlainTextListenPort: 0
-          serviceRestIncomingTlsListenPort: 0
-          serviceWebPlainTextListenPort: 0
-          serviceWebTlsListenPort: 0
-    - name: "Ansible-Solace-Test-Service-2"
-      msgVpnName: as-test-service-2
-      datacenterId: "aws-eu-west-2a"
-      serviceTypeId: "enterprise"
-      serviceClassId: "enterprise-250-nano"
+
+SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+if [[ $# != 1 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory}'"; exit 1; fi
+BROKERS_INVENTORY=$1
+
+##############################################################################################################################
+# Prepare
+
+mkdir $SCRIPT_PATH/tmp > /dev/null 2>&1
+rm -f $SCRIPT_PATH/tmp/*.*
+
+##############################################################################################################################
+# Run
+
+brokers="all"
+playbooks=(
+  "$SCRIPT_PATH/playbook.yml"
+  "$SCRIPT_PATH/ex_1.playbook.yml"
+)
+
+for playbook in ${playbooks[@]}; do
+
+  ansible-playbook \
+                    -i $BROKERS_INVENTORY \
+                    $playbook \
+                    --extra-vars "brokers=$brokers"
+
+  if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
+
+done
+
 ###
 # The End.

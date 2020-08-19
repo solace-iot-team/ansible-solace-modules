@@ -35,6 +35,7 @@ localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inve
 cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
 
 ansibleSolaceTests=(
+  "solace_facts"
   "solace_rdp"
   "solace_queue"
   "solace_mqtt_session"

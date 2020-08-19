@@ -1,3 +1,4 @@
+
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -21,35 +22,43 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
-#
-# list of services to run tests with
-#
----
-  solace_cloud_services:
-    - name: "Ansible-Solace-Test-Service-1"
-      msgVpnName: as-test-service-1
-      datacenterId: "aws-eu-west-2a"
-      serviceTypeId: "enterprise"
-      serviceClassId: "enterprise-250-nano"
-      attributes:
-        customizedMessagingPorts:
-          serviceSmfPlainTextListenPort: 55555
-          serviceSmfCompressedListenPort: 55003
-          serviceSmfTlsListenPort: 55443
-          serviceAmqpPlainTextListenPort: 0
-          serviceAmqpTlsListenPort: 0
-          serviceMqttPlainTextListenPort: 1883
-          serviceMqttTlsListenPort: 8883
-          serviceMqttTlsWebSocketListenPort: 0
-          serviceMqttWebSocketListenPort: 0
-          serviceRestIncomingPlainTextListenPort: 0
-          serviceRestIncomingTlsListenPort: 0
-          serviceWebPlainTextListenPort: 0
-          serviceWebTlsListenPort: 0
-    - name: "Ansible-Solace-Test-Service-2"
-      msgVpnName: as-test-service-2
-      datacenterId: "aws-eu-west-2a"
-      serviceTypeId: "enterprise"
-      serviceClassId: "enterprise-250-nano"
+
+-
+  name: "Test: solace_facts"
+  hosts: "{{ brokers }}"
+  gather_facts: no
+  any_errors_fatal: true
+  module_defaults:
+    solace_gather_facts:
+      host: "{{ sempv2_host }}"
+      port: "{{ sempv2_port }}"
+      secure_connection: "{{ sempv2_is_secure_connection }}"
+      username: "{{ sempv2_username }}"
+      password: "{{ sempv2_password }}"
+      timeout: "{{ sempv2_timeout }}"
+      solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
+      solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
+
+  tasks:
+
+    # DEBUG
+    # - meta: end_play
+
+    - name: "Gather Solace Facts"
+      solace_gather_facts:
+      no_log: true
+
+    - name: "Exception Get Facts: wrong vpn"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: "{{ inventory_hostname }}"
+        msg_vpn: "does_not_exist"
+        field_funcs:
+          - get_allClientConnectionDetails
+      register: result
+      failed_when: "result.rc != 1"
+      no_log: true
+
+
 ###
 # The End.

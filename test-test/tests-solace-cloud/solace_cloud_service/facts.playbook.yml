@@ -45,6 +45,7 @@
         module: copy
         content: "{{ sca_facts_dict_result | to_nice_json }}"
         dest: "./tmp/facts.dict.solace_cloud_account.{{ inventory_hostname }}.json"
+      changed_when: false
 
     - name: "Set Fact as Dict: Solace Cloud Account Services"
       set_fact:
@@ -63,6 +64,7 @@
         module: copy
         content: "{{ sca_facts_list_result | to_nice_json }}"
         dest: "./tmp/facts.list.solace_cloud_account.{{ inventory_hostname }}.json"
+      changed_when: false
 
     - name: "Set Fact: Solace Cloud Account Services"
       set_fact:
@@ -91,6 +93,12 @@
 
     - name: "Loop: Get Semp Connection Params for each Service in the Solace Cloud Account"
       include_tasks: ./local-lib/get-semp-con-params.tasks.yml
+      loop: "{{ sca_services_list_facts }}"
+      loop_control:
+        loop_var: sc_service
+
+    - name: "Loop: Get Client Connection Params for each Service in the Solace Cloud Account"
+      include_tasks: ./local-lib/get-client-con-params.tasks.yml
       loop: "{{ sca_services_list_facts }}"
       loop_control:
         loop_var: sc_service

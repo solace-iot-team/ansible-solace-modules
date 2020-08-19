@@ -24,7 +24,7 @@
 
 ---
     - debug:
-        msg: "Get SEMP Management Endpoints for {{ sc_service.name }} "
+        msg: "Get Client Connection Details for: {{ sc_service.name }} "
 
     # DEBUG
     # - meta: end_play
@@ -40,38 +40,12 @@
         sc_service_details: "{{ result.response }}"
       no_log: true
 
-    - name: "Save Solace Cloud Service Details to File"
-      local_action:
-        module: copy
-        content: "{{ sc_service_details | to_nice_json }}"
-        dest: "./tmp/facts.solace_cloud_service.{{ sc_service.name }}.details.json"
-
     - name: "Get Semp Management Endpoints for: {{ sc_service.name }}"
       solace_cloud_get_facts:
         from_dict: "{{ sc_service_details }}"
         field_funcs:
           - get_serviceSEMPManagementEndpoints
       register: semp_enpoints_facts
-
-    - name: "Save Solace Cloud Service SEMP Management Endpoints to File"
-      local_action:
-        module: copy
-        content: "{{ semp_enpoints_facts | to_nice_json }}"
-        dest: "./tmp/facts.solace_cloud_service.{{ sc_service.name }}.semp.json"
-
-    - name: "Get Host Inventory for: {{ sc_service.name }}"
-      solace_cloud_get_facts:
-        from_dict: "{{ sc_service_details }}"
-        get_formattedHostInventory:
-          host_entry: "{{ sc_service.name }}"
-          api_token: "{{ api_token_all_permissions }}"
-      register: inv_results
-
-    - name: "Save Solace Cloud Service inventory to File"
-      local_action:
-        module: copy
-        content: "{{ inv_results.facts.formattedHostInventory | to_nice_json }}"
-        dest: "./tmp/inventory.{{ sc_service.name }}.json"
 
     - name: "Set Fact: Solace Service SEMP"
       set_fact:
@@ -92,18 +66,27 @@
         timeout: "{{ sempv2_timeout }}"
         solace_cloud_api_token: "{{ api_token_all_permissions }}"
         solace_cloud_service_id: "{{ sc_service.serviceId }}"
+      no_log: true
 
-    - name: "Show ansible_facts.solace"
-      debug:
-        msg:
-          - "ansible_facts.solace:"
-          - "{{ ansible_facts.solace }}"
+    - name: "Get Facts: all client connection details"
+      solace_get_facts:
+        hostvars: "{{ hostvars }}"
+        host: "{{ inventory_hostname }}"
+        fields:
+        field_funcs:
+          - get_allClientConnectionDetails
+      register: result
+      no_log: true
 
-    - name: "Save Solace Cloud Service Facts to File"
+    - set_fact:
+        client_connection_details: "{{ result.facts }}"
+
+    - name: "Save 'client_connection_details' to File"
       local_action:
         module: copy
-        content: "{{ ansible_facts.solace | to_nice_json }}"
-        dest: "./tmp/solace_facts.solace_cloud_service.{{ sc_service.name }}.json"
+        content: "{{ client_connection_details | to_nice_json }}"
+        dest: "./tmp/facts.solace_cloud_service.{{ sc_service.name }}.client_connection_details.json"
+      no_log: true
 
 
 ###
