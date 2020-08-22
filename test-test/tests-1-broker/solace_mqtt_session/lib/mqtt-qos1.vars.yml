@@ -23,28 +23,37 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-if [[ $# != 1 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory}'"; exit 1; fi
-BROKERS_INVENTORY=$1
+---
+settings:
+  _gt_eq_2_14:
+    queueMaxMsgSize: 200000
+    queueMaxBindCount: 10
+mqtt_sessions:
+- client_id: ansible_solace_test_mqtt__1__
+  subscriptions:
+  - topic: "ansible_solace/test/__1__/topic/subscription/1/#"
+    qos: 1
+  - topic: "ansible_solace/test/__1__/topic/subscription/2/#"
+    qos: 1
+  - topic: "ansible_solace/test/__1__/topic/subscription/3/#"
+    qos: 1
+- client_id: ansible_solace_test_mqtt__2__
+  subscriptions:
+  - topic: "ansible_solace/test/__2__/topic/subscription/1/#"
+    qos: 1
+  - topic: "ansible_solace/test/__2__/topic/subscription/2/#"
+    qos: 1
+  - topic: "ansible_solace/test/__2__/topic/subscription/3/#"
+    qos: 1
+- client_id: ansible_solace_test_mqtt__3__
+  subscriptions:
+  - topic: "ansible_solace/test/__3__/topic/subscription/1/#"
+    qos: 1
+  - topic: "ansible_solace/test/__3__/topic/subscription/2/#"
+    qos: 1
+  - topic: "ansible_solace/test/__3__/topic/subscription/3/#"
+    qos: 1
 
-echo ">>>>>implement me ..."
-exit 1
-
-##############################################################################################################################
-# Prepare
-
-ANSIBLE_SOLACE_LOG_FILE="$SCRIPT_PATH/ansible-solace.log"
-rm -f $ANSIBLE_SOLACE_LOG_FILE
-
-##############################################################################################################################
-# Run
-
-PLAYBOOK="$SCRIPT_PATH/playbook.yml"
-BROKERS="all"
-
-ansible-playbook -i $BROKERS_INVENTORY \
-                  $PLAYBOOK \
-                  --extra-vars "brokers=$BROKERS" \
 
 ###
 # The End.

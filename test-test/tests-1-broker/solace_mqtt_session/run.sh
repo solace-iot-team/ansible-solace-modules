@@ -40,14 +40,28 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
   ############################################################################################################################
   # SELECT
-    # logging
-    export ANSIBLE_SOLACE_ENABLE_LOGGING=true
+    # logging & debug: ansible
+      tmpDir="$AS_TEST_SCRIPT_PATH/tmp"
+      ansibleLogFile="$tmpDir/ansible.log"
+      export ANSIBLE_LOG_PATH="$ansibleLogFile"
+      # export ANSIBLE_DEBUG=True
+      export ANSIBLE_VERBOSITY=3
+    # logging: ansible-solace
+      export ANSIBLE_SOLACE_LOG_PATH="$tmpDir/ansible-solace.log"
+      export ANSIBLE_SOLACE_ENABLE_LOGGING=True
     # select inventory
-    export AS_TEST_BROKER_INVENTORY="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-    #export AS_TEST_BROKER_INVENTORY=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
+      brokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
+      # brokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
     # select broker(s) inside inventory
-    export AS_TEST_BROKERS="all"
-  # END SELECT
+      brokers="all"
+    # playbook
+      playbooks=(
+        # "./playbook.yml"
+        "./qos1-clean.playbook.yml"
+        "./qos1.playbook.yml"
+        # "./qos1.playbook.yml" # run twice to test idempotency
+      )
+    # END SELECT
 
 
 x=$(showEnv)
@@ -56,31 +70,25 @@ x=$(wait4Key)
 ##############################################################################################################################
 # Prepare
 
-ANSIBLE_SOLACE_LOG_FILE="$AS_TEST_SCRIPT_PATH/ansible-solace.log"
-rm -f $ANSIBLE_SOLACE_LOG_FILE
-
-$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $AS_TEST_BROKER_INVENTORY
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+mkdir $tmpDir > /dev/null 2>&1
+rm -f $tmpDir/*.*
 
 ##############################################################################################################################
 # Run
 
-playbook="./playbook.yml"
+$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $brokerInventoryFile
+if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
-# --step --check -vvv
-ansible-playbook -i $AS_TEST_BROKER_INVENTORY \
-                  $playbook \
-                  --extra-vars "brokers=$AS_TEST_BROKERS" \
-                  -vvv
+for playbook in ${playbooks[@]}; do
 
-if [[ $? != 0 ]]; then
+  ansible-playbook \
+                    -i $brokerInventoryFile \
+                    $playbook \
+                    --extra-vars "brokers=$brokers"
 
-  echo ">>> ERROR";
-  echo; echo "log: $ANSIBLE_SOLACE_LOG_FILE"
-  echo
+  if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
 
-fi
-
+done
 
 ###
 # The End.
