@@ -42,6 +42,7 @@ try:
     from json.decoder import JSONDecodeError
     import requests
     import xmltodict
+    import urllib.parse
     from ansible.errors import AnsibleError
 except ImportError:
     HAS_IMPORT_ERROR = True
@@ -183,7 +184,10 @@ def compose_path(path_array):
         if path_elem == '':
             raise ValueError("path_elem='{}' is empty in path_array='{}'.".format(path_elem, str(path_array)))
         if i > 0:
-            paths.append(path_elem.replace('/', '%2F'))
+            # deals with wildcards in topic strings
+            # e.g. for MQTT subscriptions: '#' and '+'
+            new_path_elem = urllib.parse.quote_plus(path_elem, safe=',')
+            paths.append(new_path_elem)
         else:
             paths.append(path_elem)
     return '/'.join(paths)
@@ -291,5 +295,7 @@ def execute_sempv1_get_list(solace_config, xml_dict, list_path_array):
             hasNextPage = False
 
     return True, result_list
+
+
 ###
 # The End.
