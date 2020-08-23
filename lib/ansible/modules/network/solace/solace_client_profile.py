@@ -187,6 +187,7 @@ class SolaceClientProfileTask(su.SolaceTask):
 
     def create_func(self, solace_config, vpn, client_profile_name, settings=None):
         defaults = {
+            'elidingEnabled': False
         }
         mandatory = {
             self.LOOKUP_ITEM_KEY: client_profile_name,
