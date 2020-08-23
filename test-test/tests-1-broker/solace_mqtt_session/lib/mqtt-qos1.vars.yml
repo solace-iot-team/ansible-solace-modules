@@ -23,38 +23,42 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-if [[ $# != 1 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory}'"; exit 1; fi
-brokerInventoryFile=$1
+---
+settings:
+  _gt_eq_2_14:
+    queueMaxMsgSize: 200000
+    queueMaxBindCount: 10
+mqtt_sessions:
+- client_id: ansible_solace_test_mqtt__1__
+  subscriptions:
+    # test URL encoding for get
+  - topic: "ansible_solace/test/__1__/topic/subscription/1/#"
+    qos: 1
+  - topic: "ansible_solace/test/__1__/topic/subscription/2/+"
+    qos: 1
+  - topic: "ansible_solace/test/__1__/topic/+/3/#"
+    qos: 1
+  - topic: "ansible_solace/test/__1__/topic/subscription/4/#"
+    qos: 1
+  - topic: "ansible_solace/test/__1__/topic/subscription/5/#"
+    qos: 1
+- client_id: ansible_solace_test_mqtt__2__
+  subscriptions:
+  - topic: "ansible_solace/test/__2__/topic/subscription/1/#"
+    qos: 0
+  - topic: "ansible_solace/test/__2__/topic/subscription/2/#"
+    qos: 0
+  - topic: "ansible_solace/test/__2__/topic/subscription/3/#"
+    qos: 1
+- client_id: ansible_solace_test_mqtt__3__
+  subscriptions:
+  - topic: "ansible_solace/test/__3__/topic/subscription/1/#"
+    qos: 1
+  - topic: "ansible_solace/test/__3__/topic/subscription/2/#"
+    qos: 1
+  - topic: "ansible_solace/test/__3__/topic/subscription/3/#"
+    qos: 0
 
-##############################################################################################################################
-# Prepare
-
-mkdir $SCRIPT_PATH/tmp > /dev/null 2>&1
-rm -f $SCRIPT_PATH/tmp/*.*
-
-##############################################################################################################################
-# Run
-
-  brokers="all"
-  playbooks=(
-    "$SCRIPT_PATH/playbook.yml"
-    "$SCRIPT_PATH/qos1-clean.playbook.yml"
-    "$SCRIPT_PATH/qos1.playbook.yml"
-    "$SCRIPT_PATH/qos1.playbook.yml" # run twice to test idempotency
-    "$SCRIPT_PATH/qos1-clean.playbook.yml"
-  )
-
-  for playbook in ${playbooks[@]}; do
-
-    ansible-playbook \
-                      -i $brokerInventoryFile \
-                      $playbook \
-                      --extra-vars "brokers=$brokers"
-
-    if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
-
-  done
 
 ###
 # The End.

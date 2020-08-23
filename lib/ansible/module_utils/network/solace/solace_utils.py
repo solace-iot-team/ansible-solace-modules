@@ -628,17 +628,7 @@ def parse_bad_response(resp):
 
 
 def compose_path(path_array):
-    if not type(path_array) is list:
-        raise TypeError("argument 'path_array' is not an array but {}".format(type(path_array)))
-    # ensure elements are 'url encoded'
-    # except first one: SEMP_V2_CONFIG or SOLACE_CLOUD_API_SERVICES_BASE_PATH
-    paths = []
-    for i, path_elem in enumerate(path_array):
-        if i > 0:
-            paths.append(path_elem.replace('/', '%2F'))
-        else:
-            paths.append(path_elem)
-    return '/'.join(paths)
+    return sc.compose_path(path_array)
 
 
 def compose_solace_cloud_body(operation, type, data):

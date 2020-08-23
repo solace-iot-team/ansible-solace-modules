@@ -24,7 +24,6 @@ Create remaining *_get_* module for each module.
 
 ## Solace Cloud Modules
 
-- solace_cloud_service
 - solace_cloud_user
 - solace_cloud_event_portal
 ---

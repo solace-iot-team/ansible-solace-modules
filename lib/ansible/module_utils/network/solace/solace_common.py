@@ -42,6 +42,8 @@ try:
     from json.decoder import JSONDecodeError
     import requests
     import xmltodict
+    import urllib.parse
+    from ansible.errors import AnsibleError
 except ImportError:
     HAS_IMPORT_ERROR = True
     IMPORT_ERR_TRACEBACK = traceback.format_exc()
@@ -182,7 +184,10 @@ def compose_path(path_array):
         if path_elem == '':
             raise ValueError("path_elem='{}' is empty in path_array='{}'.".format(path_elem, str(path_array)))
         if i > 0:
-            paths.append(path_elem.replace('/', '%2F'))
+            # deals with wildcards in topic strings
+            # e.g. for MQTT subscriptions: '#' and '+'
+            new_path_elem = urllib.parse.quote_plus(path_elem, safe=',')
+            paths.append(new_path_elem)
         else:
             paths.append(path_elem)
     return '/'.join(paths)
@@ -206,6 +211,90 @@ def do_deep_compare(new, old, changes=dict()):
                 changes[k] = copy.deepcopy(new[k])
     # logging.debug("\n\nreturning changes =\n{}\n\n".format(json.dumps(changes, indent=2)))
     return changes
+
+
+def make_sempv1_post_request(solace_config, xml_data):
+    headers = {
+        'Content-Type': 'application/xml',
+        'x-broker-name': solace_config.x_broker
+    }
+    resp = requests.post(
+                solace_config.vmr_url + "/SEMP",
+                data=xml_data,
+                auth=solace_config.vmr_auth,
+                timeout=solace_config.vmr_timeout,
+                headers=headers,
+                params=None
+            )
+    if ENABLE_LOGGING:
+        log_http_roundtrip(resp)
+    if resp.status_code != 200:
+        raise AnsibleError("SEMP v1 call not successful. Pls check the log and raise an issue.")
+    # SEMP v1 always returns 200 (it seems)
+    # error: rpc-reply.execute-result.@code != ok or missing
+    # if error: rpc-reply ==> display
+    resp_body = xmltodict.parse(resp.text)
+    try:
+        code = resp_body['rpc-reply']['execute-result']['@code']
+    except KeyError:
+        return False, resp_body
+    if code != "ok":
+        return False, resp_body
+    return True, resp_body
+
+
+def execute_sempv1_get_list(solace_config, xml_dict, list_path_array):
+
+    if not isinstance(xml_dict, dict):
+        raise TypeError("argument 'xml_dict' is not a dict, but {}".format(type(xml_dict)))
+    if not isinstance(list_path_array, list):
+        raise TypeError("argument 'list_path_array' is not a list, but {}".format(type(list_path_array)))
+
+    xml_data = xmltodict.unparse(xml_dict)
+
+    result_list = []
+
+    hasNextPage = True
+
+    while hasNextPage:
+
+        try:
+            ok, semp_resp = make_sempv1_post_request(solace_config, xml_data)
+        except requests.exceptions.ConnectionError as e:
+            return False, str(e)
+
+        if not ok:
+            resp = dict(request=xml_data, response=semp_resp)
+            return False, resp
+
+        # get the list
+        _d = semp_resp
+        for path in list_path_array:
+            if _d and path in _d:
+                _d = _d[path]
+            else:
+                # empty list / not found
+                return True, []
+        if isinstance(_d, dict):
+            resp = [_d]
+        elif isinstance(_d, list):
+            resp = _d
+        else:
+            raise ValueError("unknown SEMP v1 return type: {}".format(type(_d)))
+
+        result_list.extend(resp)
+
+        # see if there is more
+        more_cookie = None
+        if 'more-cookie' in semp_resp['rpc-reply']:
+            more_cookie = semp_resp['rpc-reply']['more-cookie']
+        if more_cookie:
+            xml_data = xmltodict.unparse(more_cookie)
+            hasNextPage = True
+        else:
+            hasNextPage = False
+
+    return True, result_list
 
 
 ###

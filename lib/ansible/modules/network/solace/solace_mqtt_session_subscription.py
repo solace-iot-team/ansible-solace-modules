@@ -31,7 +31,16 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'supported_by': 'community'}
 
 import ansible.module_utils.network.solace.solace_utils as su
+import ansible.module_utils.network.solace.solace_common as sc
 from ansible.module_utils.basic import AnsibleModule
+import traceback
+HAS_IMPORT_ERROR = False
+IMPORT_ERR_TRACEBACK = None
+try:
+    import xmltodict
+except ImportError:
+    HAS_IMPORT_ERROR = True
+    IMPORT_ERR_TRACEBACK = traceback.format_exc()
 
 DOCUMENTATION = '''
 ---
@@ -43,7 +52,11 @@ version_added: "2.9.10"
 
 description:
 - "Configure a MQTT Session Subscription object. Allows addition, removal and update of a MQTT Session Subscription object in an idempotent manner."
-- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/mqttSession)."
+notes:
+- >
+    Depending on the Broker version, a QoS=1 subscription results in the 'magic queue' ('#mqtt/{client_id}/{number}') to
+    have ingress / egress ON or OFF. Module uses SEMP v1 <no><shutdown><full/> to ensure they are ON.
+- "Reference: U(https://docs.solace.com/API-Developer-Online-Ref-Documentation/swagger-ui/config/index.html#/mqttSession/createMsgVpnMqttSessionSubscription)."
 
 options:
   name:
@@ -81,7 +94,7 @@ EXAMPLES = '''
         msg_vpn: "{{ vpn }}"
         virtual_router: "{{ virtual_router }}"
         client_id: "{{ mqtt_session_item.mqttSessionClientId }}"
-        topic: "test/v1/>"
+        topic: "test/v1/event/+"
         state: present
 
     - name: Update subscription
@@ -95,7 +108,7 @@ EXAMPLES = '''
         msg_vpn: "{{ vpn }}"
         virtual_router: "{{ virtual_router }}"
         client_id: "{{ mqtt_session_item.mqttSessionClientId }}"
-        topic: "test/v1/>"
+        topic: "test/+/#"
         settings:
           subscriptionQos: 1
         state: present
@@ -111,7 +124,7 @@ EXAMPLES = '''
         msg_vpn: "{{ vpn }}"
         virtual_router: "{{ virtual_router }}"
         client_id: "{{ mqtt_session_item.mqttSessionClientId }}"
-        topic: "test/v1/>"
+        topic: "test/v1/#"
         state: absent
 
 '''
@@ -128,6 +141,7 @@ class SolaceMqttSessionSubscriptionTask(su.SolaceTask):
     LOOKUP_ITEM_KEY = 'subscriptionTopic'
 
     def __init__(self, module):
+        sc.module_fail_on_import_error(module, HAS_IMPORT_ERROR, IMPORT_ERR_TRACEBACK)
         su.SolaceTask.__init__(self, module)
 
     def get_args(self):
@@ -135,6 +149,44 @@ class SolaceMqttSessionSubscriptionTask(su.SolaceTask):
 
     def lookup_item(self):
         return self.module.params['name']
+
+    def get_magic_queue(self, where_name, vpn):
+        request = {
+            'rpc': {
+                'show': {
+                    'queue': {
+                        'name': where_name,
+                        'vpn-name': vpn,
+                    }
+                }
+            }
+        }
+        list_path_array = ['rpc-reply', 'rpc', 'show', 'queue', 'queues', 'queue']
+        return sc.execute_sempv1_get_list(self.solace_config, request, list_path_array)
+
+    def execute_queue_no_shutdown(self, queue_name, vpn):
+        request = {
+            'rpc': {
+                'message-spool': {
+                    'vpn-name': vpn,
+                    'queue': {
+                        'name': queue_name,
+                        'no': {
+                            'shutdown': {
+                                'full': None
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        xml_data = xmltodict.unparse(request)
+        ok, semp_resp = sc.make_sempv1_post_request(self.solace_config, xml_data)
+        if not ok:
+            resp = dict(request=xml_data, response=semp_resp)
+        else:
+            resp = semp_resp
+        return ok, resp
 
     def get_func(self, solace_config, vpn, client_id, virtual_router, lookup_item_value):
         # GET /msgVpns/{msgVpnName}/mqttSessions/{mqttSessionClientId},{mqttSessionVirtualRouter}/subscriptions/{subscriptionTopic}
@@ -155,7 +207,37 @@ class SolaceMqttSessionSubscriptionTask(su.SolaceTask):
         data = su.merge_dicts(defaults, mandatory, settings)
         uri_ext = ','.join([client_id, virtual_router])
         path_array = [su.SEMP_V2_CONFIG, su.MSG_VPNS, vpn, su.MQTT_SESSIONS, uri_ext, su.MQTT_SESSION_SUBSCRIPTIONS]
-        return su.make_post_request(solace_config, path_array, data)
+        ok, resp = su.make_post_request(solace_config, path_array, data)
+        if not ok:
+            return False, resp
+        # QoS==1? ==> ensure magic queue is ON/ON
+        if settings and settings['subscriptionQos'] == 1:
+            # search = "#mqtt/" + client_id + "/does-not-exist"
+            search = "#mqtt/" + client_id + "/*"
+            ok_gmq, resp_gmq = self.get_magic_queue(search, vpn)
+            if not ok_gmq:
+                resp['error'] = dict(
+                    msg="error retrieving magic queue: {}".format(search),
+                    details=resp_gmq
+                )
+                return False, resp
+            elif len(resp_gmq) != 1:
+                resp['error'] = dict(
+                    msg="could not find magic queue: {}".format(search)
+                )
+                return False, resp
+            # make sure magic queue is ON/ON
+            # depending on Broker version, no-shutdown is allowed or not.
+            # here: ignore error
+            mq_name = resp_gmq[0]['name']
+            ok_no_shut, resp_no_shut = self.execute_queue_no_shutdown(mq_name, vpn)
+            # if not ok_no_shut:
+            #     resp['error'] = dict(
+            #         msg="error executing no-shutdown for magic queue: {}".format(mq_name),
+            #         details=resp_no_shut
+            #     )
+            #     return False, resp
+        return True, resp
 
     def update_func(self, solace_config, vpn, client_id, virtual_router, lookup_item_value, settings=None):
         # PATCH /msgVpns/{msgVpnName}/mqttSessions/{mqttSessionClientId},{mqttSessionVirtualRouter}/subscriptions/{subscriptionTopic}
@@ -171,9 +253,6 @@ class SolaceMqttSessionSubscriptionTask(su.SolaceTask):
 
 
 def run_module():
-    """Entrypoint to module"""
-
-    """Compose module arguments"""
     module_args = dict(
         name=dict(type='str', aliases=['mqtt_session_subscription_topic', 'topic'], required=True),
         mqtt_session_client_id=dict(type='str', aliases=['client_id', 'client'], required=True),
@@ -197,7 +276,6 @@ def run_module():
 
 
 def main():
-    """Standard boilerplate"""
     run_module()
 
 
