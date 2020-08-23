@@ -1,5 +1,18 @@
 # Release Notes
 
+## Version: 0.7.2
+
+Release Purpose: Maintenance release.
+
+### Modules:
+
+      new:
+        - solace_get_magic_queues
+      updated:
+        - solace_mqtt_session_subscription:
+          - ensures that the magic queue for a qos=1 subscription is ON, regardless of Broker version
+          - bug fix for MQTT topic wildcards chars # and +
+
 ## Version: 0.7.1
 
 Release Purpose: Maintenance release.
