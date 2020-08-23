@@ -51,15 +51,16 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
       export ANSIBLE_SOLACE_ENABLE_LOGGING=True
     # select inventory
       brokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-      # brokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
+      brokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
     # select broker(s) inside inventory
       brokers="all"
     # playbook
       playbooks=(
-        # "./playbook.yml"
+        "./playbook.yml"
         "./qos1-clean.playbook.yml"
         "./qos1.playbook.yml"
-        # "./qos1.playbook.yml" # run twice to test idempotency
+        "./qos1.playbook.yml" # run twice to test idempotency
+        "./qos1-clean.playbook.yml"
       )
     # END SELECT
 

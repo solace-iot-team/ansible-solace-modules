@@ -25,26 +25,36 @@
 
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 if [[ $# != 1 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory}'"; exit 1; fi
-BROKERS_INVENTORY=$1
-
-echo ">>>>>implement me ..."
-exit 1
+brokerInventoryFile=$1
 
 ##############################################################################################################################
 # Prepare
 
-ANSIBLE_SOLACE_LOG_FILE="$SCRIPT_PATH/ansible-solace.log"
-rm -f $ANSIBLE_SOLACE_LOG_FILE
+mkdir $SCRIPT_PATH/tmp > /dev/null 2>&1
+rm -f $SCRIPT_PATH/tmp/*.*
 
 ##############################################################################################################################
 # Run
 
-PLAYBOOK="$SCRIPT_PATH/playbook.yml"
-BROKERS="all"
+  brokers="all"
+  playbooks=(
+    "$SCRIPT_PATH/playbook.yml"
+    "$SCRIPT_PATH/qos1-clean.playbook.yml"
+    "$SCRIPT_PATH/qos1.playbook.yml"
+    "$SCRIPT_PATH/qos1.playbook.yml" # run twice to test idempotency
+    "$SCRIPT_PATH/qos1-clean.playbook.yml"
+  )
 
-ansible-playbook -i $BROKERS_INVENTORY \
-                  $PLAYBOOK \
-                  --extra-vars "brokers=$BROKERS" \
+  for playbook in ${playbooks[@]}; do
+
+    ansible-playbook \
+                      -i $brokerInventoryFile \
+                      $playbook \
+                      --extra-vars "brokers=$brokers"
+
+    if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
+
+  done
 
 ###
 # The End.

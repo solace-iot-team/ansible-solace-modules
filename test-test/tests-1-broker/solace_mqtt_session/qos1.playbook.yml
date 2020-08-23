@@ -152,61 +152,6 @@
       loop_control:
         loop_var: magic_queue
 
-    # DEBUG
-    - meta: end_play
-
-
-
-    # DEBUG
-    - meta: end_play
-
-# get all queues
-# see if magic queues are included
-# check if magic queues are enabled
-
-    - name: Get Config List of MQTT Sessions
-      solace_get_mqtt_sessions:
-        msg_vpn: "{{ vpn }}"
-        query_params:
-          where:
-            - "mqttSessionClientId==ansible-solace_test_mqtt*"
-          select:
-            - "mqttSessionClientId"
-            - "mqttSessionVirtualRouter"
-            - "enabled"
-            - "owner"
-      register: get_sessions_result
-
-    - name: Fail when new sessions list count != 4
-      fail:
-        msg: "new mqtt sessions count != 4"
-      when: get_sessions_result.result_list_count != 4
-
-    - name: Get Monitor List of MQTT Sessions
-      solace_get_mqtt_sessions:
-        msg_vpn: "{{ vpn }}"
-        api: monitor
-        query_params:
-          where:
-            - "mqttSessionClientId==ansible-solace_test_mqtt*"
-          select:
-      register: get_sessions_monitor_result
-
-    - name: Print Monitor Result of MQTT Sessions
-      debug:
-        msg: "{{ get_sessions_monitor_result.result_list }}"
-
-    - name: Deleting Mqtt Sessions
-      solace_mqtt_session:
-        name: "{{ item.mqttSessionClientId }}"
-        state: absent
-      loop: "{{ target_list.mqttSessions }}"
-
-    - name: Remove Client Username
-      solace_client_username:
-        name: "{{ mqtt_client_username }}"
-        state: absent
-
 
 ###
 # The End.
