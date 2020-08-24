@@ -1,5 +1,15 @@
 # Release Notes
 
+## Version: 0.7.3
+
+Release Purpose: Maintenance release.
+
+### Modules:
+
+      updated:
+        - solace_client_profile:
+          - added elidingEnabled=false to default values for Solace Cloud
+
 ## Version: 0.7.2
 
 Release Purpose: Maintenance release.
