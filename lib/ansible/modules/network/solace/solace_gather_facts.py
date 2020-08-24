@@ -252,7 +252,7 @@ def make_get_request(solace_config, path_array):
             return False, su.parse_bad_response(resp), dict(resp.headers)
         return True, su.parse_good_response(resp), dict(resp.headers)
 
-    except requests.exceptions.ConnectionError as e:
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
         return False, str(e), dict()
 
 

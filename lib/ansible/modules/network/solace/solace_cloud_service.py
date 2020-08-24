@@ -30,8 +30,8 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
-import ansible.module_utils.network.solace.solace_cloud_utils as scu
 import ansible.module_utils.network.solace.solace_common as sc
+import ansible.module_utils.network.solace.solace_cloud_utils as scu
 from ansible.module_utils.basic import AnsibleModule
 
 DOCUMENTATION = '''

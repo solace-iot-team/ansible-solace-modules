@@ -260,7 +260,7 @@ def execute_sempv1_get_list(solace_config, xml_dict, list_path_array):
 
         try:
             ok, semp_resp = make_sempv1_post_request(solace_config, xml_data)
-        except requests.exceptions.ConnectionError as e:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             return False, str(e)
 
         if not ok:
