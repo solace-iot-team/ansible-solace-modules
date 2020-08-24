@@ -28,17 +28,18 @@
 
 """Collection of utility classes and functions to aid the solace_cloud_* modules."""
 
+import ansible.module_utils.network.solace.solace_common as sc
 import traceback
 import logging
 import json
 HAS_IMPORT_ERROR = False
 IMPORT_ERR_TRACEBACK = None
 try:
-    import ansible.module_utils.network.solace.solace_common as sc
     import requests
 except ImportError:
     HAS_IMPORT_ERROR = True
     IMPORT_ERR_TRACEBACK = traceback.format_exc()
+
 
 """ Solace Cloud resources """
 SOLACE_CLOUD_API_BASE_PATH = "https://api.solace.cloud/api/v0"
@@ -313,8 +314,8 @@ def _make_request(func, solace_config, path_array, json=None):
                 params=None
             )
         )
-    except requests.exceptions.ConnectionError as e:
-        logging.debug("ConnectionError: %s", str(e))
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        logging.debug("Request Error: %s", str(e))
         return False, str(e)
 
 

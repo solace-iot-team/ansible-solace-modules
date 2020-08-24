@@ -366,7 +366,7 @@ class SolaceTask:
                     if "data" in body.keys():
                         result_list.extend(body['data'])
 
-            except requests.exceptions.ConnectionError as e:
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
                 return False, str(e)
 
             if "meta" not in body:
@@ -549,8 +549,7 @@ def _wait_solace_cloud_request_completed(solace_config, request_resp):
                 sc.log_http_roundtrip(resp)
             if resp.status_code != 200:
                 return False, resp
-                # raise AnsibleError("Solace Cloud: GET request status error: {}".format(resp.status_code))
-        except requests.exceptions.ConnectionError as e:
+        except (requests.exceptions.ConnectionError, requests.exception.Timeout) as e:
             raise AnsibleError("Solace Cloud: GET request status error: {}".format(str(e)))
 
         if resp.text:
@@ -677,8 +676,8 @@ def _make_request(func, solace_config, path_array, json=None):
                 params=None
             )
         )
-    except requests.exceptions.ConnectionError as e:
-        logging.debug("ConnectionError: %s", str(e))
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        logging.debug("Request Error: %s", str(e))
         return False, str(e)
 
 

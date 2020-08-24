@@ -143,7 +143,8 @@ class SolaceClientProfileTask(su.SolaceTask):
         'allowGuaranteedEndpointCreateEnabled': False,
         'allowSharedSubscriptionsEnabled': False,
         'allowGuaranteedMsgSendEnabled': False,
-        'allowGuaranteedMsgReceiveEnabled': False
+        'allowGuaranteedMsgReceiveEnabled': False,
+        'elidingEnabled': False
     }
 
     def __init__(self, module):
@@ -186,12 +187,10 @@ class SolaceClientProfileTask(su.SolaceTask):
         return su.make_post_request(solace_config, path_array, data)
 
     def create_func(self, solace_config, vpn, client_profile_name, settings=None):
-        defaults = {
-        }
         mandatory = {
             self.LOOKUP_ITEM_KEY: client_profile_name,
         }
-        data = su.merge_dicts(self.SOLACE_CLOUD_DEFAULTS, defaults, mandatory, settings)
+        data = su.merge_dicts(self.SOLACE_CLOUD_DEFAULTS, mandatory, settings)
         if(su.is_broker_solace_cloud(solace_config)):
             return self._create_func_solace_cloud(solace_config, client_profile_name, data)
         else:
@@ -210,6 +209,15 @@ class SolaceClientProfileTask(su.SolaceTask):
             return False, resp
         else:
             curr_settings = current_settings[profile_names[0]]
+
+        # inconsistency in Solace Cloud API:
+        # elidingEnabled:
+        #   create: must be provided as boolean (true or false)
+        #   get: returns it as null if it was false
+        #   update: must be provided as true or false
+
+        if curr_settings and curr_settings['elidingEnabled'] is None:
+            curr_settings['elidingEnabled'] = False
 
         mandatory = {
             self.LOOKUP_ITEM_KEY: lookup_item_value,
