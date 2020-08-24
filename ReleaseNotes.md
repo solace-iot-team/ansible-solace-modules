@@ -1,14 +1,15 @@
 # Release Notes
 
 ## Version: 0.7.3
-
 Release Purpose: Maintenance release.
-
-### Modules:
-
+#### Modules:
       updated:
         - solace_client_profile:
           - added elidingEnabled=false to default values for Solace Cloud
+#### Framework:
+      updated:
+        - added request timeout handling
+        - fixed python imports & interpreter checking
 
 ## Version: 0.7.2
 
