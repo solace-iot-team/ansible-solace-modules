@@ -32,12 +32,11 @@ import traceback
 import logging
 import json
 import time
-
+import ansible.module_utils.network.solace.solace_common as sc
 HAS_IMPORT_ERROR = False
 IMPORT_ERR_TRACEBACK = None
 try:
     from inspect import signature
-    import ansible.module_utils.network.solace.solace_common as sc
     import ansible.module_utils.network.solace.solace_cloud_utils as scu
     from ansible.errors import AnsibleError
     import requests

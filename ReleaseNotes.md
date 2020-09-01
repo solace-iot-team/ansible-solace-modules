@@ -1,5 +1,11 @@
 # Release Notes
 
+## Version: 0.7.4
+Release Purpose: Maintenance release.
+#### Framework:
+      updated:
+        - fixed import error solace_common.py in case of ansible interpreter version issue
+
 ## Version: 0.7.3
 Release Purpose: Maintenance release.
 #### Modules:
