@@ -88,6 +88,10 @@ options:
             description: The API token to access the Solace Cloud Service API.
             type: str
             required: true
+        meta:
+            description: Additional meta data describing the service instance.
+            type: dict
+            required: true
 
 seealso:
 - module: solace_cloud_account_gather_facts
@@ -159,6 +163,13 @@ EXAMPLES = '''
         get_formattedHostInventory:
           host_entry: "{{ sc_service.name }}"
           api_token: "{{ api_token_all_permissions }}"
+          meta:
+            service_name: "{{ sc_service_details.name }}"
+            service_id: "{{ sc_service_details.serviceId }}"
+            datacenterId: "{{ sc_service_details.datacenterId }}"
+            serviceTypeId: "{{ sc_service_details.serviceTypeId}}"
+            serviceClassId: "{{ sc_service_details.serviceClassId }}"
+            serviceClassDisplayedAttributes: "{{ sc_service_details.serviceClassDisplayedAttributes }}"
       register: inv_results
 
     - name: "Save Solace Cloud Service inventory to File"
@@ -245,7 +256,8 @@ class SolaceCloudGetFactsTask():
             if param_get_formattedHostInventory:
                 field, value = get_formattedHostInventory(search_object,
                                                           param_get_formattedHostInventory['host_entry'],
-                                                          param_get_formattedHostInventory['api_token'])
+                                                          param_get_formattedHostInventory['api_token'],
+                                                          param_get_formattedHostInventory['meta'])
         except AnsibleError as e:
             try:
                 e_msg = json.loads(str(e))
@@ -263,7 +275,7 @@ class SolaceCloudGetFactsTask():
 #
 
 
-def get_formattedHostInventory(search_dict, host_entry, api_token):
+def get_formattedHostInventory(search_dict, host_entry, api_token, meta):
     if not type(search_dict) is dict:
         raise AnsibleError("input is not of type 'dict', but type='{}'.".format(type(search_dict)))
 
@@ -273,9 +285,7 @@ def get_formattedHostInventory(search_dict, host_entry, api_token):
     )
     hosts = dict()
     hosts[host_entry] = {
-        'meta': {
-            'service_name': search_dict['name']
-        },
+        'meta': meta,
         'ansible_connection': 'local',
         'solace_cloud_api_token': api_token,
         'solace_cloud_service_id': search_dict['serviceId'],
@@ -402,7 +412,8 @@ def run_module():
                                         default=None,
                                         options=dict(
                                             host_entry=dict(type='str', required=True),
-                                            api_token=dict(type='str', required=True)
+                                            api_token=dict(type='str', required=True),
+                                            meta=dict(type='dict', required=True)
                                         ))
     )
     arg_spec = dict()

@@ -29,7 +29,7 @@ with open("pypi/README.md", "r") as fh:
 
 setuptools.setup(
     name="ansible-solace",
-    version="0.7.4",
+    version="0.7.5",
     author="Solace Corporation",
     author_email="ricardo.gomez-ulmke@solace.com",
     description="Ansible modules to configure Solace PubSub+ event brokers with SEMP.",

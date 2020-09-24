@@ -44,6 +44,7 @@ brokers="all"
 for playbook in ${playbooks[@]}; do
 
   ansible-playbook \
+                    --forks 1 \
                     -i $BROKERS_INVENTORY_1 \
                     -i $BROKERS_INVENTORY_2 \
                     $playbook \

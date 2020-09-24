@@ -1,5 +1,12 @@
 # Release Notes
 
+## Version: 0.7.5
+Release Purpose: Enhancement to solace_cloud_get_facts.
+#### Modules:
+      updated:
+        - solace_cloud_get_facts:
+          - added mandatory 'meta' argument to function: get_formattedHostInventory
+
 ## Version: 0.7.4
 Release Purpose: Maintenance release.
 #### Framework:
