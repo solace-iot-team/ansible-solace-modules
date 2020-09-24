@@ -180,10 +180,8 @@
     - name: Get the Remote Host Settings for the Bridge
       debug:
         msg:
-          - "remote_host:"
-          - "{{ bridges_topology.bridges['ansible-solace__test_bridge'][inventory_hostname].remote_host }}"
-          - "remote_vpn:"
-          - "{{ bridges_topology.bridges['ansible-solace__test_bridge'][inventory_hostname].remote_vpn }}"
+          - "remote_host: {{ bridges_topology.bridges['ansible-solace__test_bridge'][inventory_hostname].remote_host }}"
+          - "remote_vpn: {{ bridges_topology.bridges['ansible-solace__test_bridge'][inventory_hostname].remote_vpn }}"
 
     - name: "Get Remote Host Bridge Facts"
       solace_get_facts:
@@ -271,6 +269,8 @@
         settings:
           enabled: true
         state: present
+
+    - meta: end_play
 
     - name: "Check: Bridge Remote VPN is UP"
       solace_get_bridge_remote_vpns:
