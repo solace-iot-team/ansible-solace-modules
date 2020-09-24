@@ -65,6 +65,13 @@
         get_formattedHostInventory:
           host_entry: "{{ sc_service.name }}"
           api_token: "{{ api_token_all_permissions }}"
+          meta:
+            service_name: "{{ sc_service_details.name }}"
+            service_id: "{{ sc_service_details.serviceId }}"
+            datacenterId: "{{ sc_service_details.datacenterId }}"
+            serviceTypeId: "{{ sc_service_details.serviceTypeId}}"
+            serviceClassId: "{{ sc_service_details.serviceClassId }}"
+            serviceClassDisplayedAttributes: "{{ sc_service_details.serviceClassDisplayedAttributes }}"
       register: inv_results
 
     - name: "Save Solace Cloud Service inventory to File"
