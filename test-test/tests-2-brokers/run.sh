@@ -100,7 +100,7 @@ echo; echo ">>> WARNING: not tearing down test for Solace Cloud"; echo;
 # $runScript
 # if [[ $? != 0 ]]; then echo ">>> ERROR:$runScript"; echo; exit 1; fi
 # exists=$(assertNoFile $cloudBrokerInventoryFile) || exit
-fi
+# fi
 
 echo;
 echo "##############################################################################################################"
