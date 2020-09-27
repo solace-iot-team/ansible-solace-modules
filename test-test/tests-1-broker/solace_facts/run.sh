@@ -51,7 +51,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
       export ANSIBLE_SOLACE_ENABLE_LOGGING=True
     # select inventory
       brokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-      # brokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
+      brokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
     # select broker(s) inside inventory
       brokers="all"
     # playbook
@@ -74,9 +74,6 @@ rm -f $tmpDir/*.*
 
 ##############################################################################################################################
 # Run
-
-$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $brokerInventoryFile
-if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
 
 for playbook in ${playbooks[@]}; do
 

@@ -23,6 +23,19 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
+function assertNoFile() {
+  if [[ $# -lt 1 ]]; then
+      echo "Usage: fileVar='\$(assertNoFile {full-path/filename})'" 1>&2
+      return 1
+  fi
+  local file=$1
+  if [[ -f "$file" ]]; then
+    echo ">>> ERR: file='$file' exist. aborting" > /dev/tty
+    return 1;
+  fi
+  echo $file
+  return 0
+}
 function assertFile() {
   if [[ $# -lt 1 ]]; then
       echo "Usage: fileVar='\$(assertFile {full-path/filename})'" 1>&2

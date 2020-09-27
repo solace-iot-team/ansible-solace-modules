@@ -39,6 +39,8 @@
       solace_cloud_api_token: "{{ solace_cloud_api_token | default(omit) }}"
       solace_cloud_service_id: "{{ solace_cloud_service_id | default(omit) }}"
 
+  vars_files:
+    - "../lib/solace-cloud-service.vars.yml"
 
   tasks:
 
@@ -51,20 +53,11 @@
         content: "{{ hostvars | to_nice_json }}"
         dest: ./hostvars.json
 
-    - name: "Save hostvars.local to ./hostvars.local.json"
+    - name: "Save hostvars[{{inventory_hostname}}] to ./hostvars.{{inventory_hostname}}.json"
       local_action:
         module: copy
-        content: "{{ hostvars['local']['ansible_facts']['solace'] | to_nice_json }}"
-        dest: ./hostvars.local.ansible_facts.json
-
-    # DEBUG
-    # - meta: end_play
-
-    - name: "Save hostvars.solace-cloud-1 to ./hostvars.solace-cloud-1.json"
-      local_action:
-        module: copy
-        content: "{{ hostvars['solace-cloud-1']['ansible_facts']['solace'] | to_nice_json }}"
-        dest: ./hostvars.solace-cloud-1.ansible_facts.json
+        content: "{{ hostvars[inventory_hostname]['ansible_facts']['solace'] | to_nice_json }}"
+        dest: "./hostvars.{{inventory_hostname}}.ansible_facts.json"
 
     - name: Show ansible_facts.solace
       debug:
@@ -93,14 +86,14 @@
           - get_serviceSMFMessagingEndpoints
       register: local_smf_enpoints_facts
 
-    - name: "Get Host SMF Messaging Endpoints Facts: solace-cloud-1"
+    - name: "Get Host SMF Messaging Endpoints Facts: {{sc_service.name}}"
       solace_get_facts:
         hostvars: "{{ hostvars }}"
-        host: solace-cloud-1
+        host: "{{sc_service.name}}"
         fields:
         field_funcs:
           - get_serviceSMFMessagingEndpoints
-      register: solace_cloud_1_smf_enpoints_facts
+      register: solace_cloud_smf_enpoints_facts
 
     - name: "Get Host Service Facts: local"
       solace_get_facts:
@@ -114,16 +107,16 @@
           - get_virtualRouterName
       register: local_service_facts
 
-    - name: "Get Host Service Facts: solace-cloud-1"
+    - name: "Get Host Service Facts: {{sc_service.name}}"
       solace_get_facts:
         hostvars: "{{ hostvars }}"
-        host: solace-cloud-1
+        host: "{{sc_service.name}}"
         field_funcs:
           - get_serviceSmfPlainTextListenPort
           - get_serviceSmfCompressionListenPort
           - get_serviceSmfTlsListenPort
           - get_virtualRouterName
-      register: solace_cloud_1_service_facts
+      register: solace_cloud_service_facts
 
     - name: "Show Host Service Facts"
       debug:
@@ -131,9 +124,9 @@
           - "local_service_facts:"
           - "{{ local_service_facts }}"
           - "{{ local_smf_enpoints_facts }}"
-          - "solace_cloud_1_service_facts:"
-          - "{{ solace_cloud_1_service_facts }}"
-          - "{{ solace_cloud_1_smf_enpoints_facts }}"
+          - "solace_cloud_service_facts:"
+          - "{{ solace_cloud_service_facts }}"
+          - "{{ solace_cloud_smf_enpoints_facts }}"
 
     - name: "Get Host Bridge Facts: local"
       solace_get_facts:
@@ -144,22 +137,22 @@
           - get_bridge_remoteMsgVpnLocations
       register: local_bridge
 
-    - name: "Get Host Bridge Facts: solace-cloud-1"
+    - name: "Get Host Bridge Facts: {{sc_service.name}}"
       solace_get_facts:
         hostvars: "{{ hostvars }}"
-        host: solace-cloud-1
+        host: "{{sc_service.name}}"
         fields:
         field_funcs:
           - get_bridge_remoteMsgVpnLocations
-      register: solace_cloud_1_bridge
+      register: solace_cloud_bridge
 
     - name: Print Host Bridge Facts
       debug:
         msg:
           - "remote host bridge facts: local"
           - "{{ local_bridge.facts }}"
-          - "remote host bridge facts: solace-cloud-1"
-          - "{{ solace_cloud_1_bridge.facts }}"
+          - "remote host bridge facts: {{sc_service.name}}"
+          - "{{ solace_cloud_bridge.facts }}"
 
 
 ###

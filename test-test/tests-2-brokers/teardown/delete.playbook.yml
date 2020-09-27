@@ -1,4 +1,4 @@
-#!/bin/bash
+
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -23,31 +23,28 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+-
+  name: "Delete Solace Cloud Service"
+  hosts: "{{ SOLACE_CLOUD_ACCOUNTS }}"
+  gather_facts: no
+  any_errors_fatal: true
 
-##############################################################################################################################
-# Settings
+  vars_files:
+    - "../lib/solace-cloud-service.vars.yml"
 
-  runCallDirs=(
-    # "solace_get_available"
-  )
+  tasks:
 
-##############################################################################################################################
-# Run
-for runCallDir in ${runCallDirs[@]}; do
+    - name: "Delete Solace Cloud Service by Name"
+      solace_cloud_service:
+        api_token: "{{ api_token_all_permissions }}"
+        name: "{{ sc_service.name }}"
+        state: absent
 
-  runScript="$SCRIPT_PATH/$runCallDir/_run.call.sh"
-
-  echo; echo "##############################################################################################################"
-  echo "# script: $SCRIPT_PATH"
-  echo "# Running Tests: $runCallDir"
-  echo "# calling: $runScript"
-
-  $runScript
-
-  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
-
-done
+    - name: "Delete Solace Cloud Service Inventory"
+      local_action:
+        module: file
+        path: "./lib/broker.inventories/cloud.broker.inventory.json"
+        state: absent
 
 ###
 # The End.

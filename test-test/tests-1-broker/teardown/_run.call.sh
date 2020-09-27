@@ -24,30 +24,33 @@
 # ---------------------------------------------------------------------------------------------
 
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+source $AS_TEST_HOME/lib/functions.sh
 
 ##############################################################################################################################
-# Settings
+# Configure
 
-  runCallDirs=(
-    # "solace_get_available"
-  )
+solaceCloudAccountsInventoryFile=$(assertFile "$SCRIPT_PATH/lib/broker.inventories/solace-cloud-accounts.inventory.yml") || exit
+solaceCloudAccounts="all"
 
+playbooks=(
+  "$SCRIPT_PATH/delete.playbook.yml"
+)
+
+##############################################################################################################################
+# Prepare
+mkdir $SCRIPT_PATH/tmp > /dev/null 2>&1
+rm -f $SCRIPT_PATH/tmp/*.*
 ##############################################################################################################################
 # Run
-for runCallDir in ${runCallDirs[@]}; do
-
-  runScript="$SCRIPT_PATH/$runCallDir/_run.call.sh"
-
-  echo; echo "##############################################################################################################"
-  echo "# script: $SCRIPT_PATH"
-  echo "# Running Tests: $runCallDir"
-  echo "# calling: $runScript"
-
-  $runScript
-
-  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
-
+for playbook in ${playbooks[@]}; do
+  ansible-playbook \
+                    -i $solaceCloudAccountsInventoryFile \
+                    $playbook \
+                    --extra-vars "SOLACE_CLOUD_ACCOUNTS=$solaceCloudAccounts"
+  if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
 done
+
+
 
 ###
 # The End.

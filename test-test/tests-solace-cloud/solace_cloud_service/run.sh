@@ -49,7 +49,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
       export ANSIBLE_SOLACE_LOG_PATH="./tmp/ansible-solace.log"
       export ANSIBLE_SOLACE_ENABLE_LOGGING=True
     # select inventory
-      solaceCloudAccountsInventoryFile=$(assertFile "$AS_TEST_SCRIPT_PATH/lib/solace-cloud-accounts.inventory.yml") || exit
+      solaceCloudAccountsInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/solace-cloud-accounts.inventory.yml") || exit
     # select account(s) inside inventory
       solaceCloudAccounts="all"
 

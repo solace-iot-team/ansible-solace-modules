@@ -28,43 +28,32 @@ source $AS_TEST_HOME/lib/functions.sh
 
 ##############################################################################################################################
 # Configure
-brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
-localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
-export brokers="all"
-playbook="$SCRIPT_PATH/playbook.yml"
+
+solaceCloudAccountsInventoryFile=$(assertFile "$SCRIPT_PATH/lib/broker.inventories/solace-cloud-accounts.inventory.yml") || exit
+solaceCloudAccounts="all"
+
+playbooks=(
+  "$SCRIPT_PATH/create.playbook.yml"
+)
 
 ##############################################################################################################################
 # Prepare
-
+mkdir $SCRIPT_PATH/tmp > /dev/null 2>&1
+rm -f $SCRIPT_PATH/tmp/*.*
 ##############################################################################################################################
-# Run Cloud
-ansible-playbook \
-                  -i $cloudBrokerInventoryFile \
-                  $playbook \
-                  --extra-vars "brokers=$brokers" \
-                  -vvvv
-
-if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
-
-
-##############################################################################################################################
-# Run Local
-brokerDockerImages=$(cat $brokerDockerImagesFile | jq -r ".brokerDockerImages[]")
-for brokerDockerImage in ${brokerDockerImages[@]}; do
-
-  $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
-  if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
+# Run
+for playbook in ${playbooks[@]}; do
 
   ansible-playbook \
-                      -i $localBrokerInventoryFile \
-                      $playbook \
-                      --extra-vars "brokers=$brokers" \
-                      -vvvv
+                    -i $solaceCloudAccountsInventoryFile \
+                    $playbook \
+                    --extra-vars "SOLACE_CLOUD_ACCOUNTS=$solaceCloudAccounts"
 
-  if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
 
 done
+
+
 
 ###
 # The End.
