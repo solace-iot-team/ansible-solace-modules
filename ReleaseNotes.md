@@ -1,5 +1,13 @@
 # Release Notes
 
+## Version: 0.7.6
+Release Purpose: Test Framework Enhancements.
+#### Test Framework:
+      updated:
+        - added prepare & teardown for
+          - tests-1-broker
+          - tests-2-brokers
+
 ## Version: 0.7.5
 Release Purpose: Enhancement to solace_cloud_get_facts.
 #### Modules:

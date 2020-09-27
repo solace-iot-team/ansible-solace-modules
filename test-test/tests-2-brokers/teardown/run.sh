@@ -23,46 +23,62 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
-if [[ $# != 2 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory_1} {full_path}/{broker_inventory_2}'"; exit 1; fi
-BROKERS_INVENTORY_1=$1
-BROKERS_INVENTORY_2=$2
-source $AS_TEST_HOME/lib/functions.sh
+clear
+echo; echo "##############################################################################################################"
+echo
+
+source ./_run.env.sh
+
+##############################################################################################################################
+# Choose Environment
+
+# select here or interactively
+  export AS_TEST_RUNNER_ENV="dev"
+  #export AS_TEST_RUNNER_ENV="package"
+
+source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
+
+  ############################################################################################################################
+  # SELECT
+    # logging & debug: ansible
+      # ansibleLogFile="./tmp/ansible.log"
+      # export ANSIBLE_LOG_PATH="$ansibleLogFile"
+      # export ANSIBLE_DEBUG=False
+      export ANSIBLE_VERBOSITY=3
+    # logging: ansible-solace
+      export ANSIBLE_SOLACE_LOG_PATH="./tmp/ansible-solace.log"
+      export ANSIBLE_SOLACE_ENABLE_LOGGING=True
+    # select inventory
+      solaceCloudAccountsInventoryFile=$(assertFile "$AS_TEST_SCRIPT_PATH/lib/broker.inventories/solace-cloud-accounts.inventory.yml") || exit
+    # select account(s) inside inventory
+      solaceCloudAccounts="all"
+
+    # playbook
+    playbooks=(
+      "./delete.playbook.yml"
+    )
+
+  # END SELECT
+
+x=$(showEnv)
+x=$(wait4Key)
+
 ##############################################################################################################################
 # Prepare
 
+mkdir ./tmp > /dev/null 2>&1
+rm -f ./tmp/*.*
+
 ##############################################################################################################################
 # Run
-
-playbook="$SCRIPT_PATH/exceptions.bad-solace-cloud-config.playbook.yml"
-badCloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/bad.cloud.broker.inventory.json") || exit
-brokers="all"
-ansible-playbook \
-                  --forks 1 \
-                  -i $badCloudBrokerInventoryFile \
-                  $playbook \
-                  --extra-vars "brokers=$brokers" \
-                  -vvv
-if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
-
-playbooks=(
-  "$SCRIPT_PATH/exceptions.1.playbook.yml"
-  "$SCRIPT_PATH/exceptions.2.playbook.yml"
-  "$SCRIPT_PATH/examples.playbook.yml"
-  "$SCRIPT_PATH/playbook.yml"
-)
-brokers="all"
-
 for playbook in ${playbooks[@]}; do
 
   ansible-playbook \
-                    --forks 1 \
-                    -i $BROKERS_INVENTORY_1 \
-                    -i $BROKERS_INVENTORY_2 \
+                    -i $solaceCloudAccountsInventoryFile \
                     $playbook \
-                    --extra-vars "brokers=$brokers" \
+                    --extra-vars "SOLACE_CLOUD_ACCOUNTS=$solaceCloudAccounts"
 
-  if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
 
 done
 

@@ -30,7 +30,7 @@ source $AS_TEST_HOME/lib/functions.sh
 # Configure
 brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
 localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
+cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
 
 ansibleSolaceTests=(
   "solace_facts"
@@ -38,39 +38,40 @@ ansibleSolaceTests=(
 )
 
 ##############################################################################################################################
-# Run
+# prepare test
+  echo ">>> preparing test ..."
+  runScript="$SCRIPT_PATH/prepare/_run.call.sh"
+  $runScript
+  if [[ $? != 0 ]]; then echo ">>> ERROR:$runScript"; echo; exit 1; fi
 
-$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $cloudBrokerInventoryFile
-if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH .aborting."; echo; exit 1; fi
+##############################################################################################################################
+# Run
 
 brokerDockerImages=$(cat $brokerDockerImagesFile | jq -r ".brokerDockerImages[]")
 for brokerDockerImage in ${brokerDockerImages[@]}; do
-
   $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
-  if [[ $? != 0 ]]; then ">>> ERR: $SCRIPT_PATH .aborting."; echo; exit 1; fi
-
+    if [[ $? != 0 ]]; then echo ">>> ERROR starting local broker: $brokerDockerImage"; echo; exit 1; fi
   $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $localBrokerInventoryFile
-  if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH .aborting."; echo; exit 1; fi
-
+    if [[ $? != 0 ]]; then echo ">>> ERROR: $SCRIPT_PATH"; echo; exit 1; fi
   for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
-
     runScript="$SCRIPT_PATH/$ansibleSolaceTest/_run.call.sh $localBrokerInventoryFile $cloudBrokerInventoryFile"
-
     echo; echo "##############################################################################################################"
     echo "# script: $SCRIPT_PATH"
     echo "# test: $ansibleSolaceTest"
     echo "# local broker image: $brokerDockerImage"
     echo "# cloud broker: "$(cat $cloudBrokerInventoryFile | jq -r ".[].hosts[].meta")
     echo "# calling: $runScript"
-
     $runScript
-
-    if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH .aborting."; echo; exit 1; fi
-
+      if [[ $? != 0 ]]; then echo ">>> ERROR:$runScript"; echo; exit 1; fi
   done
-
 done
 
+##############################################################################################################################
+# teardown test
+echo ">>> tearing down test ..."
+runScript="$SCRIPT_PATH/teardown/_run.call.sh"
+$runScript
+  if [[ $? != 0 ]]; then echo ">>> ERROR:$runScript"; echo; exit 1; fi
 
 ###
 # The End.

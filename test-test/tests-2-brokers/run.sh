@@ -35,7 +35,6 @@ source ./_run.env.sh
 # select here or interactively
   export AS_TEST_RUNNER_ENV="dev"
   #export AS_TEST_RUNNER_ENV="package"
-
 source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
 ##############################################################################################################################
@@ -51,7 +50,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
   brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
   localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-  cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
+  cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json"
   badCloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/bad.cloud.broker.inventory.json") || exit
 
   brokerDockerImage=$(chooseBrokerDockerImage "$brokerDockerImagesFile")
@@ -69,12 +68,15 @@ x=$(wait4Key)
 # prepare
 
 $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERROR: starting local broker $brokerDockerImage"; echo; exit 1; fi
+
+runScript="$AS_TEST_SCRIPT_PATH/prepare/_run.call.sh"
+  $runScript
+    if [[ $? != 0 ]]; then echo ">>> ERROR:$runScript"; echo; exit 1; fi
+  x=$(assertFile $cloudBrokerInventoryFile) || exit
 
 $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $localBrokerInventoryFile
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $cloudBrokerInventoryFile
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
 
 ##############################################################################################################################
 # run tests against broker
@@ -89,6 +91,16 @@ if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
     if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH .aborting."; echo; exit 1; fi
 
   done
+
+##############################################################################################################################
+# teardown test
+echo ">>> tearing down test ..."
+echo; echo ">>> WARNING: not tearing down test for Solace Cloud"; echo;
+# runScript="$AS_TEST_SCRIPT_PATH/teardown/_run.call.sh"
+# $runScript
+# if [[ $? != 0 ]]; then echo ">>> ERROR:$runScript"; echo; exit 1; fi
+# exists=$(assertNoFile $cloudBrokerInventoryFile) || exit
+# fi
 
 echo;
 echo "##############################################################################################################"

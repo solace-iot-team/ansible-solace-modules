@@ -6,9 +6,9 @@
       #   must be the same name as in the main inventory
       # - bridges always come in pairs and reference each other
       local:
-        remote_host: solace-cloud-1
-        remote_vpn: ansible-test
-      solace-cloud-1:
+        remote_host: ansible_solace_test_broker
+        remote_vpn: as_test_broker
+      ansible_solace_test_broker:
         remote_host: local
         remote_vpn: default
 

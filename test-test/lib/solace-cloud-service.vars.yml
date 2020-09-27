@@ -1,4 +1,3 @@
-#!/bin/bash
 # ---------------------------------------------------------------------------------------------
 # MIT License
 #
@@ -23,31 +22,29 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
 
-##############################################################################################################################
-# Settings
-
-  runCallDirs=(
-    # "solace_get_available"
-  )
-
-##############################################################################################################################
-# Run
-for runCallDir in ${runCallDirs[@]}; do
-
-  runScript="$SCRIPT_PATH/$runCallDir/_run.call.sh"
-
-  echo; echo "##############################################################################################################"
-  echo "# script: $SCRIPT_PATH"
-  echo "# Running Tests: $runCallDir"
-  echo "# calling: $runScript"
-
-  $runScript
-
-  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
-
-done
+---
+  sc_service:
+    name: ansible_solace_test_broker
+    msgVpnName: as_test_broker
+    datacenterId: "aws-eu-west-2a"
+    serviceTypeId: "enterprise"
+    serviceClassId: "enterprise-250-nano"
+    attributes:
+      customizedMessagingPorts:
+        serviceSmfPlainTextListenPort: 55555
+        serviceSmfCompressedListenPort: 55003
+        serviceSmfTlsListenPort: 55443
+        serviceAmqpPlainTextListenPort: 0
+        serviceAmqpTlsListenPort: 0
+        serviceMqttPlainTextListenPort: 0
+        serviceMqttTlsListenPort: 0
+        serviceMqttTlsWebSocketListenPort: 0
+        serviceMqttWebSocketListenPort: 0
+        serviceRestIncomingPlainTextListenPort: 0
+        serviceRestIncomingTlsListenPort: 0
+        serviceWebPlainTextListenPort: 0
+        serviceWebTlsListenPort: 0
 
 ###
 # The End.

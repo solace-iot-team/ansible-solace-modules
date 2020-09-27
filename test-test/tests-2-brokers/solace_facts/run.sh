@@ -70,17 +70,14 @@ rm -f hostvars*.json
 
 ##############################################################################################################################
 # Run
-$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $badCloudBrokerInventoryFile
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
-playbook="./exceptions.bad-solace-cloud-config.playbook.yml"
-ansible-playbook \
-                  --forks 1 \
-                  -i $badCloudBrokerInventoryFile \
-                  $playbook \
-                  --extra-vars "brokers=$brokers" \
-                  -vvv
-if [[ $? != 0 ]]; then echo ">>> ERR. aborting."; exit 1; fi
+# playbook="./exceptions.bad-solace-cloud-config.playbook.yml"
+# ansible-playbook \
+#                   --forks 1 \
+#                   -i $badCloudBrokerInventoryFile \
+#                   $playbook \
+#                   --extra-vars "brokers=$brokers" \
+#                   -vvv
+# if [[ $? != 0 ]]; then echo ">>> ERR. aborting."; exit 1; fi
 
 $AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $localBrokerInventoryFile
 if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi

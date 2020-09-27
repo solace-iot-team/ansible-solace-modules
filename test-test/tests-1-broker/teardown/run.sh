@@ -40,22 +40,25 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
   ############################################################################################################################
   # SELECT
-    # logging
-    export ANSIBLE_SOLACE_ENABLE_LOGGING=true
-    # export ANSIBLE_LOG_PATH=./ansible.log
-    # export ANSIBLE_DEBUG=True
-    # images
-    brokerDockerImagesFile="$AS_TEST_HOME/lib/brokerDockerImages.json"
+    # logging & debug: ansible
+      # ansibleLogFile="./tmp/ansible.log"
+      # export ANSIBLE_LOG_PATH="$ansibleLogFile"
+      # export ANSIBLE_DEBUG=False
+      export ANSIBLE_VERBOSITY=3
+    # logging: ansible-solace
+      export ANSIBLE_SOLACE_LOG_PATH="./tmp/ansible-solace.log"
+      export ANSIBLE_SOLACE_ENABLE_LOGGING=True
     # select inventory
-    localBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/local.broker.inventory.json"
-    cloudBrokerInventoryFile=$(assertFile "$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inventory.json") || exit
-    # select broker(s) inside inventory
-    export brokers="all"
+      solaceCloudAccountsInventoryFile=$(assertFile "$AS_TEST_SCRIPT_PATH/lib/broker.inventories/solace-cloud-accounts.inventory.yml") || exit
+    # select account(s) inside inventory
+      solaceCloudAccounts="all"
+
     # playbook
-    playbook="./playbook.yml"
+    playbooks=(
+      "./delete.playbook.yml"
+    )
 
   # END SELECT
-
 
 x=$(showEnv)
 x=$(wait4Key)
@@ -63,38 +66,19 @@ x=$(wait4Key)
 ##############################################################################################################################
 # Prepare
 
-ANSIBLE_SOLACE_LOG_FILE="$AS_TEST_SCRIPT_PATH/ansible-solace.log"
-rm -f $ANSIBLE_SOLACE_LOG_FILE
-rm -f $AS_TEST_SCRIPT_PATH/*.log
+mkdir ./tmp > /dev/null 2>&1
+rm -f ./tmp/*.*
 
 ##############################################################################################################################
-# Run Cloud
-
-ansible-playbook \
-                  -i $cloudBrokerInventoryFile \
-                  $playbook \
-                  --extra-vars "brokers=$brokers" \
-                  -vvvv
-
-if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
-
-##############################################################################################################################
-# Run Local
-brokerDockerImages=$(cat $brokerDockerImagesFile | jq -r ".brokerDockerImages[]")
-for brokerDockerImage in ${brokerDockerImages[@]}; do
-
-  $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
-  if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
-
-  x=$(wait4BrokerStart)
+# Run
+for playbook in ${playbooks[@]}; do
 
   ansible-playbook \
-                    -i $localBrokerInventoryFile \
+                    -i $solaceCloudAccountsInventoryFile \
                     $playbook \
-                    --extra-vars "brokers=$brokers" \
-                    -vvvv
+                    --extra-vars "SOLACE_CLOUD_ACCOUNTS=$solaceCloudAccounts"
 
-  if [[ $? != 0 ]]; then echo ">>> ERR: $SCRIPT_PATH. aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
 
 done
 

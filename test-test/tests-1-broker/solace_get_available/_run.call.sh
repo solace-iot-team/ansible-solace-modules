@@ -24,29 +24,26 @@
 # ---------------------------------------------------------------------------------------------
 
 SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+if [[ $# != 1 ]]; then echo "Usage: '$SCRIPT_PATH/_run.call.sh {full_path}/{broker_inventory}'"; exit 1; fi
+BROKERS_INVENTORY=$1
+source $AS_TEST_HOME/lib/functions.sh
 
 ##############################################################################################################################
-# Settings
-
-  runCallDirs=(
-    # "solace_get_available"
-  )
+# Prepare
 
 ##############################################################################################################################
 # Run
-for runCallDir in ${runCallDirs[@]}; do
+brokers="all"
+playbooks=(
+  "$SCRIPT_PATH/playbook.yml"
+)
 
-  runScript="$SCRIPT_PATH/$runCallDir/_run.call.sh"
-
-  echo; echo "##############################################################################################################"
-  echo "# script: $SCRIPT_PATH"
-  echo "# Running Tests: $runCallDir"
-  echo "# calling: $runScript"
-
-  $runScript
-
-  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
-
+for playbook in ${playbooks[@]}; do
+  ansible-playbook \
+                    -i $BROKERS_INVENTORY \
+                    $playbook \
+                    --extra-vars "brokers=$brokers"
+  if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
 done
 
 ###

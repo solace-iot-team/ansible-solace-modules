@@ -40,10 +40,11 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 ##############################################################################################################################
 # Settings
 
-  export ANSIBLE_SOLACE_ENABLE_LOGGING=false
-  # export ANSIBLE_SOLACE_ENABLE_LOGGING=true
+  # export ANSIBLE_SOLACE_ENABLE_LOGGING=false
+  export ANSIBLE_SOLACE_ENABLE_LOGGING=true
 
   ansibleSolaceTests=(
+    "solace_get_available"
     "solace_facts"
     "solace_rdp"
     "solace_queue"
@@ -80,17 +81,20 @@ echo
 x=$(wait4Key)
 
 ##############################################################################################################################
-# prepare
-if [ ! -z "$brokerDockerImage" ]; then
+# prepare test
+echo ">>> preparing test ..."
+if [[ $brokerChoice == "local-broker" ]]; then
   $AS_TEST_HOME/lib/_start.local.broker.sh $brokerDockerImage
-  if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
+  if [[ $? != 0 ]]; then echo ">>> ERROR starting local broker"; echo; exit 1; fi
+else
+  runScript="$AS_TEST_SCRIPT_PATH/prepare/_run.call.sh"
+  $runScript
+  if [[ $? != 0 ]]; then echo ">>> ERROR:$runScript"; echo; exit 1; fi
+  brokerInventoryFile=$(assertFile $cloudBrokerInventoryFile) || exit
 fi
 
-$AS_TEST_HOME/tests-embeddable/wait-until-broker-available/_run.call.sh $brokerInventoryFile
-if [[ $? != 0 ]]; then echo "ERR >>> aborting."; echo; exit 1; fi
-
 ##############################################################################################################################
-# run tests against broker
+# run tests
 
 for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
 
@@ -105,6 +109,21 @@ for ansibleSolaceTest in ${ansibleSolaceTests[@]}; do
   if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
 
 done
+
+##############################################################################################################################
+# teardown test
+echo ">>> tearing down test ..."
+if [[ $brokerChoice == "local-broker" ]]; then
+  $AS_TEST_HOME/lib/_stop.local.broker.sh $brokerDockerImage
+  if [[ $? != 0 ]]; then echo ">>> ERROR stopping local broker"; echo; exit 1; fi
+else
+  echo; echo ">>> WARNING: not tearing down test for Solace Cloud"; echo;
+  # runScript="$AS_TEST_SCRIPT_PATH/teardown/_run.call.sh"
+  # $runScript
+  # if [[ $? != 0 ]]; then echo ">>> ERROR:$runScript"; echo; exit 1; fi
+  # exists=$(assertNoFile $cloudBrokerInventoryFile) || exit
+fi
+
 
 echo;
 echo "##############################################################################################################"

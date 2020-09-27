@@ -23,31 +23,17 @@
 # SOFTWARE.
 # ---------------------------------------------------------------------------------------------
 
-SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+###############################################################################################
+# sets the base env for the test
+#
+# call: source ./_run.env.sh
+#
 
-##############################################################################################################################
-# Settings
+export AS_TEST_SCRIPT_NAME=$(basename $(test -L "$0" && readlink "$0" || echo "$0"));
+export AS_TEST_SCRIPT_PATH=$(cd $(dirname "$0") && pwd);
+export AS_TEST_PROJECT_HOME=${AS_TEST_SCRIPT_PATH%%/test-test/*}
+export AS_TEST_HOME="$AS_TEST_PROJECT_HOME/test-test"
 
-  runCallDirs=(
-    # "solace_get_available"
-  )
-
-##############################################################################################################################
-# Run
-for runCallDir in ${runCallDirs[@]}; do
-
-  runScript="$SCRIPT_PATH/$runCallDir/_run.call.sh"
-
-  echo; echo "##############################################################################################################"
-  echo "# script: $SCRIPT_PATH"
-  echo "# Running Tests: $runCallDir"
-  echo "# calling: $runScript"
-
-  $runScript
-
-  if [[ $? != 0 ]]; then echo ">>> ERR:$runScript. aborting."; echo; exit 1; fi
-
-done
 
 ###
 # The End.

@@ -42,7 +42,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 # Settings
 
   runCallDirs=(
-    "solace_get_available"
+    # "solace_get_available"
   )
 
 ##############################################################################################################################

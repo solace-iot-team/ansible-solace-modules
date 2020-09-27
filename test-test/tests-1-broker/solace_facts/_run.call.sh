@@ -43,14 +43,11 @@ playbooks=(
 )
 
 for playbook in ${playbooks[@]}; do
-
   ansible-playbook \
                     -i $BROKERS_INVENTORY \
                     $playbook \
                     --extra-vars "brokers=$brokers"
-
   if [[ $? != 0 ]]; then echo ">>> ERR: $AS_TEST_SCRIPT_PATH"; echo; exit 1; fi
-
 done
 
 ###
