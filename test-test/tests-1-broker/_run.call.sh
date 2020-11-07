@@ -36,6 +36,7 @@ cloudBrokerInventoryFile="$AS_TEST_HOME/lib/broker.inventories/cloud.broker.inve
 
 ansibleSolaceTests=(
   "solace_get_available"
+  "solace_get_vpn_clients"
   "solace_facts"
   "solace_rdp"
   "solace_queue"

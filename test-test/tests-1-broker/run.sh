@@ -45,6 +45,7 @@ source $AS_TEST_HOME/lib/_run.env.sh $AS_TEST_RUNNER_ENV
 
   ansibleSolaceTests=(
     "solace_get_available"
+    "solace_get_vpn_clients"
     "solace_facts"
     "solace_rdp"
     "solace_queue"

@@ -185,5 +185,30 @@ options:
           elements: str
 '''
 
+    GET_LIST_MONITOR = r'''
+description:
+- "Implements the monitor API."
+- "Retrieves all objects that match the criteria defined in the 'where' clause and returns the fields defined in the 'select' parameter."
+
+options:
+  query_params:
+    description: The query parameters.
+    required: false
+    type: dict
+    default: {}
+    suboptions:
+        select:
+          description: Include in the response only selected attributes of the object, or exclude from the response selected attributes of the object. See the documentation for the select parameter.
+          type: list
+          default: []
+          elements: str
+        where:
+          description: Include in the response only objects where certain conditions are true. See the the documentation for the where parameter.
+          notes: URL encoded automatically, you can safely use '/, <, <=, >, >=, != .. '
+          type: list
+          default: []
+          elements: str
+'''
+
 ###
 # The End.
