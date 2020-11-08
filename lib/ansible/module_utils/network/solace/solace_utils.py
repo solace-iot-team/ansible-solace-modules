@@ -70,6 +70,7 @@ BRIDGES = 'bridges'
 BRIDGES_REMOTE_MSG_VPNS = 'remoteMsgVpns'
 BRIDGES_REMOTE_SUBSCRIPTIONS = 'remoteSubscriptions'
 BRIDGES_TRUSTED_COMMON_NAMES = 'tlsTrustedCommonNames'
+CLIENTS = 'clients'
 
 QUEUES = 'queues'
 SUBSCRIPTIONS = 'subscriptions'
@@ -450,6 +451,17 @@ def arg_spec_crud():
 def arg_spec_get_list():
     return dict(
         api=dict(type='str', default='config', choices=['config', 'monitor']),
+        query_params=dict(type='dict',
+                          required=False,
+                          options=dict(
+                            select=dict(type='list', default=[], elements='str'),
+                            where=dict(type='list', default=[], elements='str')
+                          )
+                          )
+    )
+
+def arg_spec_get_list_monitor():
+    return dict(
         query_params=dict(type='dict',
                           required=False,
                           options=dict(

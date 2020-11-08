@@ -7,3 +7,4 @@ dist
 ansible_solace.egg-info
 build*.sh
 upload*.sh
+.vscode
