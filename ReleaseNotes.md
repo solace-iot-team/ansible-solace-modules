@@ -1,5 +1,11 @@
 # Release Notes
 
+## Version: 0.7.7
+Release Purpose: New Module.
+
+**New:**
+* **solace_get_vpn_clients**
+
 ## Version: 0.7.6
 Release Purpose: Test Framework Enhancements.
 #### Test Framework:

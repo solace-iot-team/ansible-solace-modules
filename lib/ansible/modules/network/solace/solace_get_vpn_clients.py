@@ -92,7 +92,7 @@ result_list:
     sample: [
         {
             "clientAddress": "127.0.0.1:51794",
-            "clientName": "#client",
+            "clientName": "test-ansible-1",
             "txByteCount": 296,
             "uptime": 5626
         }
